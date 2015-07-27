@@ -1,8 +1,8 @@
 require 'helper'
 
-describe ProbeDockRSpec::Project do
-  Project ||= ProbeDockRSpec::Project
-  PayloadError ||= ProbeDockRSpec::PayloadError
+describe ProbeDockProbe::Project do
+  Project ||= ProbeDockProbe::Project
+  PayloadError ||= ProbeDockProbe::PayloadError
 
   let(:project_options){ { version: '1.2.3', api_id: 'abc', category: 'A category', tags: %w(a b c), tickets: %w(t1 t2) } }
   subject{ Project.new project_options }

@@ -1,12 +1,12 @@
 require 'oj'
 require 'httparty'
 
-module ProbeDockRSpec
+module ProbeDockProbe
 
   class Server
     attr_accessor :name, :api_url, :api_token, :project_api_id
 
-    class Error < ProbeDockRSpec::Error
+    class Error < ProbeDockProbe::Error
       attr_reader :response
 
       def initialize msg, response = nil

@@ -1,6 +1,6 @@
 require 'helper'
 
-describe ProbeDockRSpec::Server do
+describe ProbeDockProbe::Server do
   let(:api_token){ 'abcdefghijklmnopqrstuvwxyz' }
   let :options do
     {
@@ -10,7 +10,7 @@ describe ProbeDockRSpec::Server do
       project_api_id: '0000000000'
     }
   end
-  let(:server){ ProbeDockRSpec::Server.new options }
+  let(:server){ ProbeDockProbe::Server.new options }
   subject{ server }
 
   it "should set its attributes" do
@@ -108,7 +108,7 @@ describe ProbeDockRSpec::Server do
 
   def raise_server_error *args
     options = args.last.kind_of?(Hash) ? args.pop : {}
-    raise_error ProbeDockRSpec::Server::Error do |err|
+    raise_error ProbeDockProbe::Server::Error do |err|
       args.each{ |m| expect(err.message).to match(m) }
       expect(err.response).to options[:res] ? be(options[:res]) : be_nil
     end

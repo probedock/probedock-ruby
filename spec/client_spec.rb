@@ -1,7 +1,7 @@
 require 'helper'
 require 'json'
 
-describe ProbeDockRSpec::Client do
+describe ProbeDockProbe::Client do
   include Capture::Helpers
   include FakeFS::SpecHelpers
 
@@ -29,29 +29,29 @@ describe ProbeDockRSpec::Client do
   let(:server_options){ { name: 'A server', api_url: API_URL, project_api_id: '0123456789', upload: nil } }
   let(:server){ double server_options }
   let(:client_options){ { publish: true, workspace: WORKSPACE } }
-  let(:client){ ProbeDockRSpec::Client.new server, client_options }
+  let(:client){ ProbeDockProbe::Client.new server, client_options }
   subject{ client }
 
   before :each do
-    allow(ProbeDockRSpec::TestPayload).to receive(:new).and_return(payload_double)
-    allow(ProbeDockRSpec::UID).to receive(:new).and_return(uid_double)
+    allow(ProbeDockProbe::TestPayload).to receive(:new).and_return(payload_double)
+    allow(ProbeDockProbe::UID).to receive(:new).and_return(uid_double)
   end
 
   describe "when created" do
-    subject{ ProbeDockRSpec::Client }
+    subject{ ProbeDockProbe::Client }
 
     it "should not raise an error if the server is missing" do
-      expect{ ProbeDockRSpec::Client.new nil, client_options }.not_to raise_error
+      expect{ ProbeDockProbe::Client.new nil, client_options }.not_to raise_error
     end
 
     it "should create an uid manager" do
-      expect(ProbeDockRSpec::UID).to receive(:new).with(workspace: WORKSPACE)
-      ProbeDockRSpec::Client.new server, client_options
+      expect(ProbeDockProbe::UID).to receive(:new).with(workspace: WORKSPACE)
+      ProbeDockProbe::Client.new server, client_options
     end
   end
 
   it "should upload the results payload" do
-    expect(ProbeDockRSpec::TestPayload).to receive(:new).with(run_double)
+    expect(ProbeDockProbe::TestPayload).to receive(:new).with(run_double)
     expect(payload_double).to receive(:to_h).with({})
     expect_processed true, SENDING_PAYLOAD_MSG, API_URL, DONE_MSG
   end
@@ -77,7 +77,7 @@ describe ProbeDockRSpec::Client do
   end
 
   describe "when the payload cannot be serialized" do
-    before(:each){ allow(payload_double).to receive(:to_h).and_raise(ProbeDockRSpec::PayloadError.new('bug')) }
+    before(:each){ allow(payload_double).to receive(:to_h).and_raise(ProbeDockProbe::PayloadError.new('bug')) }
     it "should output the error to stderr" do
       expect_processed false, stderr: [ 'bug' ]
     end
@@ -93,14 +93,14 @@ describe ProbeDockRSpec::Client do
 
   describe "when publishing fails due to a configuration error" do
     it "should output the error message to stderr" do
-      allow(server).to receive(:upload).and_raise(ProbeDockRSpec::Server::Error.new("bug"))
+      allow(server).to receive(:upload).and_raise(ProbeDockProbe::Server::Error.new("bug"))
       expect_processed false, SENDING_PAYLOAD_MSG, API_URL, stderr: [ UPLOAD_FAILED_MSG, 'bug' ]
     end
   end
 
   describe "when publishing fails due to a server error" do
     it "should output the error message and response body to stderr" do
-      allow(server).to receive(:upload).and_raise(ProbeDockRSpec::Server::Error.new("bug", double(body: 'fubar')))
+      allow(server).to receive(:upload).and_raise(ProbeDockProbe::Server::Error.new("bug", double(body: 'fubar')))
       expect_processed false, SENDING_PAYLOAD_MSG, API_URL, stderr: [ UPLOAD_FAILED_MSG, 'bug', DUMPING_RESPONSE_MSG, 'fubar' ]
     end
   end

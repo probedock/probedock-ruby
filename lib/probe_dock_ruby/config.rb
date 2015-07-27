@@ -1,7 +1,7 @@
 require 'yaml'
 
 # Utilities to send test results to Probe Dock.
-module ProbeDockRSpec
+module ProbeDockProbe
 
   def self.config
     @config ||= Config.new.tap(&:load!)
@@ -14,14 +14,12 @@ module ProbeDockRSpec
     config.check!
     config.load_warnings.each{ |w| warn Paint["Probe Dock - #{w}", :yellow] }
 
-    config.setup! if options[:setup] != false
-
     config
   end
 
   class Config
     # TODO: add silent/verbose option(s)
-    class Error < ProbeDockRSpec::Error; end
+    class Error < ProbeDockProbe::Error; end
     attr_writer :publish, :local_mode, :print_payload, :save_payload
     attr_reader :project, :server, :workspace, :load_warnings
 
@@ -39,13 +37,6 @@ module ProbeDockRSpec
 
     def servers
       @servers.dup
-    end
-
-    # Plugs Probe Dock utilities into RSpec.
-    def setup!
-      ::RSpec.configure do |c|
-        c.add_formatter Formatter
-      end
     end
 
     %w(publish local_mode print_payload save_payload).each do |name|

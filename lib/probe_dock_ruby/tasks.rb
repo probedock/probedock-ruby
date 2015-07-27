@@ -1,7 +1,7 @@
 require 'fileutils'
 require 'rake/tasklib'
 
-module ProbeDockRSpec
+module ProbeDockProbe
 
   class Tasks < ::Rake::TaskLib
 
@@ -56,7 +56,7 @@ module ProbeDockRSpec
     end
 
     def uid_manager
-      UID.new ProbeDockRSpec.config.client_options
+      UID.new ProbeDockProbe.config.client_options
     end
   end
 end

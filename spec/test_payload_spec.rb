@@ -1,7 +1,7 @@
 require 'helper'
 
-describe ProbeDockRSpec::TestPayload do
-  TestPayload ||= ProbeDockRSpec::TestPayload
+describe ProbeDockProbe::TestPayload do
+  TestPayload ||= ProbeDockProbe::TestPayload
 
   let(:run_to_h){ { 'foo' => 'bar' } }
   let(:run_double){ double to_h: run_to_h }

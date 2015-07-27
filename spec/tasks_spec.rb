@@ -1,9 +1,9 @@
 require 'helper'
 
-describe ProbeDockRSpec::Tasks do
+describe ProbeDockProbe::Tasks do
   include Capture::Helpers
-  UID ||= ProbeDockRSpec::UID
-  Tasks ||= ProbeDockRSpec::Tasks
+  UID ||= ProbeDockProbe::UID
+  Tasks ||= ProbeDockProbe::Tasks
 
   let(:client_options){ { workspace: '/tmp' } }
   let(:config_double){ double client_options: client_options }
@@ -13,7 +13,7 @@ describe ProbeDockRSpec::Tasks do
 
   before :each do
     Rake::Task.clear
-    allow(ProbeDockRSpec).to receive(:config).and_return(config_double)
+    allow(ProbeDockProbe).to receive(:config).and_return(config_double)
     allow(UID).to receive(:new).and_return(uid_double)
     subject
   end

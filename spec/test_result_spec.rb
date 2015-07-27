@@ -1,13 +1,13 @@
 require 'helper'
 
-describe ProbeDockRSpec::TestResult do
+describe ProbeDockProbe::TestResult do
   let(:project_options){ { category: 'A category', tags: %w(a b), tickets: %w(t1 t2) } }
   let(:project_double){ double project_options }
   let(:example_metadata){ { key: '123' } }
   let(:example_double){ double description: 'should work', metadata: { probe_dock: example_metadata } }
   let(:group_doubles){ [ group_double('Something') ] }
   let(:result_options){ { passed: true, duration: 42 } }
-  let(:result){ ProbeDockRSpec::TestResult.new project_double, example_double, group_doubles, result_options }
+  let(:result){ ProbeDockProbe::TestResult.new project_double, example_double, group_doubles, result_options }
   subject{ result }
 
   it "should use the example key" do
@@ -180,7 +180,7 @@ describe ProbeDockRSpec::TestResult do
   end
 
   describe ".meta" do
-    subject{ ProbeDockRSpec::TestResult }
+    subject{ ProbeDockProbe::TestResult }
 
     it "should extract Probe Dock metadata" do
       expect(subject.meta(double(metadata: { probe_dock: { foo: 'bar' } }))).to eq(foo: 'bar')
@@ -196,7 +196,7 @@ describe ProbeDockRSpec::TestResult do
   end
 
   describe ".extract_key" do
-    subject{ ProbeDockRSpec::TestResult }
+    subject{ ProbeDockProbe::TestResult }
 
     it "should return nil when there is no key" do
       example = double metadata: {}
@@ -234,7 +234,7 @@ describe ProbeDockRSpec::TestResult do
   end
 
   describe ".extract_grouped" do
-    subject{ ProbeDockRSpec::TestResult }
+    subject{ ProbeDockProbe::TestResult }
 
     it "should not indicate a normal example as grouped" do
       example = double metadata: { probe_dock: { key: 'abc' } }

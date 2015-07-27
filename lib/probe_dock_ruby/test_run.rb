@@ -1,5 +1,4 @@
-
-module ProbeDockRSpec
+module ProbeDockProbe
 
   class TestRun
     attr_reader :results, :project

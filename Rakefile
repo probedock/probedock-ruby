@@ -14,12 +14,12 @@ require 'rake'
 require 'jeweler'
 Jeweler::Tasks.new do |gem|
   # gem is a Gem::Specification... see http://docs.rubygems.org/read/chapter/20 for more options
-  gem.name = "probedock-rspec"
-  gem.homepage = "https://github.com/probedock/probedock-rspec"
+  gem.name = "probedock-ruby"
+  gem.homepage = "https://github.com/probedock/probedock-ruby"
   gem.license = "MIT"
-  gem.summary = %Q{RSpec client to publish test results to Probe Dock.}
-  gem.description = %Q{RSpec client to publish test results to Probe Dock, a test tracking and analysis server.}
-  gem.email = "simon.oulevay@gmail.com"
+  gem.summary = %Q{Ruby library to develop new probes for Probe Dock.}
+  gem.description = %Q{Ruby library to develop new probes for Probe Dock. It can parse Probe Dock configuration files, collect test results and publish them to a Probe Dock server.}
+  gem.email = "devops@probedock.io"
   gem.authors = ["Simon Oulevay (Alpha Hydrae)"]
   gem.files = Dir["lib/**/*.rb"] + %w(Gemfile LICENSE.txt README.md VERSION)
   # dependencies defined in Gemfile
@@ -29,7 +29,7 @@ Jeweler::RubygemsDotOrgTasks.new
 # version tasks
 require 'rake-version'
 RakeVersion::Tasks.new do |v|
-  v.copy 'lib/probe_dock_rspec.rb'
+  v.copy 'lib/probe_dock_ruby.rb'
 end
 
 require 'rspec/core/rake_task'

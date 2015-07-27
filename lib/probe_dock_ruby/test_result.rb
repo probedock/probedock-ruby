@@ -1,6 +1,4 @@
-
-module ProbeDockRSpec
-
+module ProbeDockProbe
   class TestResult
     attr_reader :key, :name, :category, :tags, :tickets, :data, :duration, :message
 

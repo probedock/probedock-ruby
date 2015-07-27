@@ -1,8 +1,6 @@
 # encoding: UTF-8
-require 'rspec'
-
-module ProbeDockRSpec
-  VERSION = '0.5.3'
+module ProbeDockProbe
+  VERSION = '0.1.0'
 
   class Error < StandardError; end
   class PayloadError < Error; end

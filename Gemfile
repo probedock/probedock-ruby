@@ -3,7 +3,6 @@ source "http://rubygems.org"
 # Example:
 #   gem "activesupport", ">= 2.3.5"
 
-gem 'rspec', '~> 3.1'
 gem 'oj', '~> 2.1'
 gem 'httparty', '~> 0.13'
 gem 'paint', '~> 1.0'
@@ -16,6 +15,7 @@ group :development do
   gem 'rake-version', '~> 0.4'
   gem 'simplecov', '~> 0.10', require: false
   gem 'fakefs', '~> 0.6', require: 'fakefs/safe'
+  gem 'rspec', '~> 3.1'
   gem 'rspec-its', '~> 1.2'
   gem 'rspec-collection_matchers', '~> 1.1'
   gem 'coveralls', '~> 0.8', require: false

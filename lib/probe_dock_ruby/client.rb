@@ -1,5 +1,4 @@
-
-module ProbeDockRSpec
+module ProbeDockProbe
 
   class Client
 

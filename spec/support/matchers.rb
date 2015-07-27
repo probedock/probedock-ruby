@@ -22,16 +22,3 @@ RSpec::Matchers.define :have_server_configuration do |expected|
     "have server configuration #{expected.inspect}"
   end
 end
-
-=begin
-RSpec::Matchers.define :include_matching do |*expected|
-
-  match do |actual|
-    expected.all?{ |e| actual.any?{ |a| a.match(e) } }
-  end
-
-  description do
-    "include an element matching #{expected}"
-  end
-end
-=end

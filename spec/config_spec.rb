@@ -1,13 +1,13 @@
 require 'helper'
 require 'fileutils'
 
-describe ProbeDockRSpec::Config do
+describe ProbeDockProbe::Config do
   include Capture::Helpers
   include FakeFS::SpecHelpers
-  Server ||= ProbeDockRSpec::Server
-  Project ||= ProbeDockRSpec::Project
+  Server ||= ProbeDockProbe::Server
+  Project ||= ProbeDockProbe::Project
 
-  let(:config){ ProbeDockRSpec::Config.new }
+  let(:config){ ProbeDockProbe::Config.new }
   let(:rspec_config){ double add_formatter: nil }
   let(:project_double){ double update: nil }
   let(:server_doubles){ [] }
@@ -20,45 +20,45 @@ describe ProbeDockRSpec::Config do
 
   describe ".config" do
     let(:new_config){ double load!: nil }
-    before(:each){ allow(ProbeDockRSpec::Config).to receive(:new).and_return(new_config) }
+    before(:each){ allow(ProbeDockProbe::Config).to receive(:new).and_return(new_config) }
 
     it "should create, load and memoize a configuration" do
       expect(new_config).to receive(:load!).once
-      3.times{ expect(ProbeDockRSpec.config).to be(new_config) }
+      3.times{ expect(ProbeDockProbe.config).to be(new_config) }
     end
   end
 
   describe ".configure" do
     let(:load_warnings){ [] }
     let(:config){ double load!: nil, check!: nil, setup!: nil, load_warnings: load_warnings }
-    before(:each){ allow(ProbeDockRSpec).to receive(:config).and_return(config) }
+    before(:each){ allow(ProbeDockProbe).to receive(:config).and_return(config) }
 
     it "should yield and return the configuration" do
       result = nil
-      expect{ |b| result = ProbeDockRSpec.configure &b }.to yield_with_args(config)
+      expect{ |b| result = ProbeDockProbe.configure &b }.to yield_with_args(config)
       expect(result).to be(config)
     end
 
     it "should check the configuration" do
       expect(config).to receive(:check!)
-      ProbeDockRSpec.configure
+      ProbeDockProbe.configure
     end
 
     it "should set up the configuration" do
       expect(config).to receive(:setup!)
-      ProbeDockRSpec.configure
+      ProbeDockProbe.configure
     end
 
     it "should not set up if disabled" do
       expect(config).not_to receive(:setup!)
-      ProbeDockRSpec.configure setup: false
+      ProbeDockProbe.configure setup: false
     end
 
     describe "with load warnings" do
       let(:load_warnings){ [ 'a', 'b' ] }
 
       it "should print load warnings" do
-        c = capture{ ProbeDockRSpec.configure }
+        c = capture{ ProbeDockProbe.configure }
         expect(c.stdout).to be_empty
         expect(c.stderr).to match('Probe Dock - a')
         expect(c.stderr).to match('Probe Dock - b')
@@ -67,7 +67,7 @@ describe ProbeDockRSpec::Config do
   end
 
   describe "when created" do
-    subject{ ProbeDockRSpec::Config }
+    subject{ ProbeDockProbe::Config }
 
     it "should create a project" do
       expect(Project).to receive(:new)
@@ -106,7 +106,7 @@ describe ProbeDockRSpec::Config do
   end
 
   it "should add the formatter to RSpec" do
-    expect(rspec_config).to receive(:add_formatter).with(ProbeDockRSpec::Formatter)
+    expect(rspec_config).to receive(:add_formatter).with(ProbeDockProbe::Formatter)
     subject.setup!
   end
 

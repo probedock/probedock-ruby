@@ -1,4 +1,4 @@
-module ProbeDockRSpec
+module ProbeDockProbe
 
   class Project
     attr_accessor :version, :api_id, :category, :tags, :tickets

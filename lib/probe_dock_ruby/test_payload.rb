@@ -1,11 +1,11 @@
 require 'fileutils'
 require 'digest/sha2'
 
-module ProbeDockRSpec
+module ProbeDockProbe
 
   class TestPayload
 
-    class Error < ProbeDockRSpec::Error; end
+    class Error < ProbeDockProbe::Error; end
 
     def initialize run
       @run = run

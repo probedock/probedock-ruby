@@ -1,10 +1,10 @@
 require 'helper'
 
-describe ProbeDockRSpec::TestRun do
-  TestRun ||= ProbeDockRSpec::TestRun
-  TestResult ||= ProbeDockRSpec::TestResult
-  TestPayload ||= ProbeDockRSpec::TestPayload
-  PayloadError ||= ProbeDockRSpec::PayloadError
+describe ProbeDockProbe::TestRun do
+  TestRun ||= ProbeDockProbe::TestRun
+  TestResult ||= ProbeDockProbe::TestResult
+  TestPayload ||= ProbeDockProbe::TestPayload
+  PayloadError ||= ProbeDockProbe::PayloadError
 
   let(:project_options){ { name: 'A project', version: '1.2.3', api_id: 'abc', category: 'A category', tags: %w(a b), tickets: %w(t1 t2) } }
   let(:project_double){ double project_options.merge(:validate! => nil) }

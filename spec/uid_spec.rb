@@ -1,8 +1,8 @@
 require 'helper'
 
-describe ProbeDockRSpec::UID do
+describe ProbeDockProbe::UID do
   include FakeFS::SpecHelpers
-  UID ||= ProbeDockRSpec::UID
+  UID ||= ProbeDockProbe::UID
   ENVIRONMENT_VARIABLE = 'PROBE_DOCK_TEST_REPORT_UID'
   UID_REGEXP = /\d{14}\-[a-f0-9]{8}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{12}/
 

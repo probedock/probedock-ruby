@@ -12,8 +12,8 @@ Gem::Specification.new do |s|
   s.require_paths = ["lib"]
   s.authors = ["Simon Oulevay (Alpha Hydrae)"]
   s.date = "2015-07-27"
-  s.description = "This ruby library can be used to develop a new probe for Probe Dock. It can parse Probe Dock configuration files, collect test results and publish them to a Probe Dock server."
-  s.email = "simon.oulevay@probedock.io"
+  s.description = "Ruby library to develop new probes for Probe Dock. It can parse Probe Dock configuration files, collect test results and publish them to a Probe Dock server."
+  s.email = "devops@probedock.io"
   s.extra_rdoc_files = [
     "LICENSE.txt",
     "README.md"
@@ -26,7 +26,6 @@ Gem::Specification.new do |s|
     "lib/probe_dock_ruby.rb",
     "lib/probe_dock_ruby/client.rb",
     "lib/probe_dock_ruby/config.rb",
-    "lib/probe_dock_ruby/formatter.rb",
     "lib/probe_dock_ruby/project.rb",
     "lib/probe_dock_ruby/server.rb",
     "lib/probe_dock_ruby/tasks.rb",

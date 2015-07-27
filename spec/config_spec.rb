@@ -44,11 +44,6 @@ describe ProbeDockProbe::Config do
       ProbeDockProbe.configure
     end
 
-    it "should set up the configuration" do
-      expect(config).to receive(:setup!)
-      ProbeDockProbe.configure
-    end
-
     it "should not set up if disabled" do
       expect(config).not_to receive(:setup!)
       ProbeDockProbe.configure setup: false
@@ -103,11 +98,6 @@ describe ProbeDockProbe::Config do
   it "should expand the workspace" do
     subject.workspace = 'foo'
     expect(subject.workspace).to eq(File.expand_path('foo'))
-  end
-
-  it "should add the formatter to RSpec" do
-    expect(rspec_config).to receive(:add_formatter).with(ProbeDockProbe::Formatter)
-    subject.setup!
   end
 
   describe "when loaded" do

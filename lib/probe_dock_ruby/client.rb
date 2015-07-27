@@ -1,3 +1,5 @@
+require 'paint'
+
 module ProbeDockProbe
 
   class Client

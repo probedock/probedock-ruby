@@ -1,22 +1,6 @@
 require 'yaml'
 
-# Utilities to send test results to Probe Dock.
 module ProbeDockProbe
-
-  def self.config
-    @config ||= Config.new.tap(&:load!)
-  end
-
-  def self.configure options = {}
-
-    yield config if block_given?
-
-    config.check!
-    config.load_warnings.each{ |w| warn Paint["Probe Dock - #{w}", :yellow] }
-
-    config
-  end
-
   class Config
     # TODO: add silent/verbose option(s)
     class Error < ProbeDockProbe::Error; end
@@ -87,8 +71,15 @@ module ProbeDockProbe
       project_options.merge! api_id: @server.project_api_id if @server and @server.project_api_id
       @project.update project_options
 
+      yield self if block_given?
+
+      check!
+      @load_warnings.each{ |w| warn Paint["Probe Dock - #{w}", :yellow] }
+
       self
     end
+
+    private
 
     def check!
 
@@ -105,8 +96,6 @@ module ProbeDockProbe
         @load_warnings << "No server name given"
       end
     end
-
-    private
 
     def build_servers config
 

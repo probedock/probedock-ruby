@@ -3,7 +3,6 @@ require 'helper'
 describe ProbeDockProbe::TestRun do
   TestRun ||= ProbeDockProbe::TestRun
   TestResult ||= ProbeDockProbe::TestResult
-  TestPayload ||= ProbeDockProbe::TestPayload
   PayloadError ||= ProbeDockProbe::PayloadError
 
   let(:project_options){ { name: 'A project', version: '1.2.3', api_id: 'abc', category: 'A category', tags: %w(a b), tickets: %w(t1 t2) } }
@@ -30,74 +29,44 @@ describe ProbeDockProbe::TestRun do
   end
 
   describe "#add_result" do
-    let(:example_double){ double }
-    let(:group_doubles){ [] }
-    let(:result_options){ {} }
+    let(:result_options){ { key: 'abc', name: 'Something should work', fingerprint: 'foo' } }
     let(:new_result_double){ double }
+
     before :each do
       allow(TestResult).to receive(:new).and_return(new_result_double)
     end
 
     it "should add a new result" do
-      allow(TestResult).to receive(:extract_grouped).and_return(false)
-      allow(TestResult).to receive(:extract_key).and_return(nil)
-      expect(TestResult).to receive(:new).with(project_double, example_double, group_doubles, result_options)
+      expect(TestResult).to receive(:new).with(project_double, result_options)
       add_result
       expect(subject.results).to eq([ new_result_double ])
     end
 
-    it "should update an existing result" do
+    it "should update an existing result with the :grouped option" do
       existing_result = double key: 'abc', grouped?: true, update: nil
       subject.results << existing_result
-      allow(TestResult).to receive(:extract_grouped).and_return(true)
-      allow(TestResult).to receive(:extract_key).and_return('abc')
-      expect(TestResult).to receive(:extract_grouped).with(example_double, group_doubles)
-      expect(TestResult).to receive(:extract_key).with(example_double, group_doubles)
       expect(TestResult).not_to receive(:new)
-      expect(existing_result).to receive(:update).with(result_options)
-      add_result
+      expect(existing_result).to receive(:update).with(result_options.merge(grouped: true))
+      add_result key: 'abc', grouped: true
       expect(subject.results).to eq([ existing_result ])
     end
 
     it "should not update an existing result that is not grouped" do
       existing_result = double key: 'abc', grouped?: false
       subject.results << existing_result
-      allow(TestResult).to receive(:extract_grouped).and_return(true)
-      allow(TestResult).to receive(:extract_key).and_return('abc')
-      expect(TestResult).to receive(:extract_grouped).with(example_double, group_doubles)
-      expect(TestResult).to receive(:new).with(project_double, example_double, group_doubles, result_options)
+      expect(TestResult).to receive(:new).with(project_double, result_options)
       expect(existing_result).not_to receive(:update)
-      add_result
+      add_result key: 'abc'
       expect(subject.results).to eq([ existing_result, new_result_double ])
     end
 
     it "should not update an existing result if the key doesn't match" do
       existing_result = double key: 'abc', grouped?: true
       subject.results << existing_result
-      allow(TestResult).to receive(:extract_grouped).and_return(true)
-      allow(TestResult).to receive(:extract_key).and_return('bcd')
-      expect(TestResult).to receive(:extract_grouped).with(example_double, group_doubles)
-      expect(TestResult).to receive(:extract_key).with(example_double, group_doubles)
-      expect(TestResult).to receive(:new).with(project_double, example_double, group_doubles, result_options)
+      expect(TestResult).to receive(:new).with(project_double, result_options.merge(key: 'bcd', grouped: true))
       expect(existing_result).not_to receive(:update)
-      add_result
+      add_result key: 'bcd', grouped: true
       expect(subject.results).to eq([ existing_result, new_result_double ])
-    end
-
-    it "should return an array or results without key" do
-      doubles = [ 'abc', nil, '  ', 'bcd', nil ].collect{ |key| double key: key }
-      subject.results.concat doubles
-      expect(subject.results_without_key).to eq([ doubles[1], doubles[2], doubles[4] ])
-    end
-
-    it "should return a map of results by key" do
-      doubles = [ 'abc', nil, nil, '   ', 'abc', 'bcd', 'cde', 'cde' ].collect{ |key| double key: key }
-      subject.results.concat doubles
-      expect(subject.results_by_key).to eq({
-        'abc' => [ doubles[0], doubles[4] ],
-        'bcd' => [ doubles[5] ],
-        'cde' => [ doubles[6], doubles[7] ]
-      })
     end
 
     describe "#to_h" do
@@ -127,10 +96,6 @@ describe ProbeDockProbe::TestRun do
         it "should not raise an error" do
           expect{ subject.to_h }.not_to raise_error
         end
-
-        xit "should return warnings" do
-          # not yet implemented
-        end
       end
 
       describe "with results that have duplicate keys" do
@@ -144,10 +109,6 @@ describe ProbeDockProbe::TestRun do
 
         it "should not raise an error" do
           expect{ subject.to_h }.not_to raise_error
-        end
-
-        xit "should return warnings" do
-          # not yet implemented
         end
       end
 
@@ -180,8 +141,8 @@ describe ProbeDockProbe::TestRun do
       end
     end
 
-    def add_result
-      subject.add_result example_double, group_doubles, result_options
+    def add_result options = {}
+      subject.add_result result_options.merge(options)
     end
   end
 

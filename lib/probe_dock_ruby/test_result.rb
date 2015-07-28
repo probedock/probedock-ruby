@@ -1,22 +1,33 @@
 module ProbeDockProbe
   class TestResult
-    attr_reader :key, :name, :category, :tags, :tickets, :data, :duration, :message
+    attr_reader :key, :fingerprint, :name, :category, :tags, :tickets, :data, :duration, :message
 
-    def initialize project, example, groups = [], options = {}
+    def initialize project, options = {}
 
-      @category = project.category
-      @tags = project.tags
-      @tickets = project.tickets
-
-      @grouped = extract_grouped example, groups
-
-      [ :key, :name, :category, :tags, :tickets, :data ].each do |attr|
-        instance_variable_set "@#{attr}".to_sym, send("extract_#{attr}".to_sym, example, groups)
+      if !options[:fingerprint]
+        raise Error, "The :fingerprint option is required (unique identifier for the test)"
+      elsif !options[:name]
+        raise Error, "The :name option is required (human-friendly identifier for the test, not necessarily unique)"
+      elsif !options.key?(:passed)
+        raise Error, "The :passed option is required (indicates whether the test passed or not)"
+      elsif !options[:duration]
+        raise Error, "The :duration options is required (indicates how long it took to run the test)"
       end
 
+      @key = options[:key]
+      @fingerprint = options[:fingerprint]
+      @name = options[:name]
+
+      @category = options[:category] || project.category
+      @tags = (wrap(options[:tags]) + wrap(project.tags)).compact.collect(&:to_s).uniq
+      @tickets = (wrap(options[:tickets]) + wrap(project.tickets)).compact.collect(&:to_s).uniq
+
+      @grouped = !!options[:grouped]
       @passed = !!options[:passed]
       @duration = options[:duration]
       @message = options[:message]
+
+      @data = options[:data] || {}
     end
 
     def passed?
@@ -28,13 +39,19 @@ module ProbeDockProbe
     end
 
     def update options = {}
+
       @passed &&= options[:passed]
       @duration += options[:duration]
-      @message = [ @message, options[:message] ].select{ |m| m }.join("\n\n") if options[:message]
+      @message = [ @message, options[:message] ].compact.join("\n\n") if options[:message]
+
+      @category = options[:category] if options[:category]
+      @tags = (@tags + wrap(options[:tags]).compact.collect(&:to_s)).uniq if options[:tags]
+      @tickets = (@tickets + wrap(options[:tickets]).compact.collect(&:to_s)).uniq if options[:tickets]
     end
 
     def to_h options = {}
       {
+        'f' => @fingerprint,
         'p' => @passed,
         'd' => @duration
       }.tap do |h|
@@ -46,63 +63,6 @@ module ProbeDockProbe
         h['t'] = @tickets
         h['a'] = @data
       end
-    end
-
-    def self.extract_grouped example, groups = []
-      !!groups.collect{ |g| meta(g)[:grouped] }.compact.last
-    end
-
-    def self.extract_key example, groups = []
-      (groups.collect{ |g| meta(g)[:key] } << meta(example)[:key]).compact.reject{ |k| k.strip.empty? }.last
-    end
-
-    def self.meta holder
-      meta = holder.metadata[:probe_dock] || {}
-      if meta.kind_of? String
-        { key: meta }
-      elsif meta.kind_of? Hash
-        meta
-      else
-        {}
-      end
-    end
-
-    private
-
-    def meta *args
-      self.class.meta *args
-    end
-
-    def extract_grouped *args
-      self.class.extract_grouped *args
-    end
-
-    def extract_key *args
-      self.class.extract_key *args
-    end
-
-    def extract_name example, groups = []
-      parts = groups.dup
-      parts = parts[0, parts.index{ |p| meta(p)[:grouped] } + 1] if @grouped
-      parts << example unless @grouped
-      parts.collect{ |p| p.description.strip }.join ' '
-    end
-
-    def extract_category example, groups = []
-      cat = (groups.collect{ |g| meta(g)[:category] }.unshift(@category) << meta(example)[:category]).compact.last
-      cat ? cat.to_s : nil
-    end
-
-    def extract_tags example, groups = []
-      (wrap(@tags) + groups.collect{ |g| wrap meta(g)[:tags] } + (wrap meta(example)[:tags])).flatten.compact.uniq.collect(&:to_s)
-    end
-
-    def extract_tickets example, groups = []
-      (wrap(@tickets) + groups.collect{ |g| wrap meta(g)[:tickets] } + (wrap meta(example)[:tickets])).flatten.compact.uniq.collect(&:to_s)
-    end
-
-    def extract_data example, groups = []
-      meta(example)[:data] || {}
     end
 
     def wrap a

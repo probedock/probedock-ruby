@@ -21,10 +21,9 @@ describe ProbeDockProbe::Client do
   API_URL = 'http://example.com/api'
   WORKSPACE = '/tmp'
 
-  let(:payload_to_h){ { 'foo' => 'bar' } }
-  let(:payload_double){ double to_h: payload_to_h }
   let(:uid_double){ double load_uid: '42' }
-  let(:run_double){ double :uid= => nil }
+  let(:run_to_h){ { 'foo' => 'bar' } }
+  let(:run_double){ double :uid= => nil, :to_h => run_to_h }
 
   let(:server_options){ { name: 'A server', api_url: API_URL, project_api_id: '0123456789', upload: nil } }
   let(:server){ double server_options }
@@ -33,7 +32,6 @@ describe ProbeDockProbe::Client do
   subject{ client }
 
   before :each do
-    allow(ProbeDockProbe::TestPayload).to receive(:new).and_return(payload_double)
     allow(ProbeDockProbe::UID).to receive(:new).and_return(uid_double)
   end
 
@@ -51,8 +49,7 @@ describe ProbeDockProbe::Client do
   end
 
   it "should upload the results payload" do
-    expect(ProbeDockProbe::TestPayload).to receive(:new).with(run_double)
-    expect(payload_double).to receive(:to_h).with({})
+    expect(run_double).to receive(:to_h).with({})
     expect_processed true, SENDING_PAYLOAD_MSG, API_URL, DONE_MSG
   end
 
@@ -77,7 +74,7 @@ describe ProbeDockProbe::Client do
   end
 
   describe "when the payload cannot be serialized" do
-    before(:each){ allow(payload_double).to receive(:to_h).and_raise(ProbeDockProbe::PayloadError.new('bug')) }
+    before(:each){ allow(run_double).to receive(:to_h).and_raise(ProbeDockProbe::PayloadError.new('bug')) }
     it "should output the error to stderr" do
       expect_processed false, stderr: [ 'bug' ]
     end
@@ -109,12 +106,12 @@ describe ProbeDockProbe::Client do
     let(:client_options){ super().merge print_payload: true }
 
     it "should print the payload" do
-      expect_processed true, SENDING_PAYLOAD_MSG, API_URL, DONE_MSG, PRINTING_PAYLOAD_MSG, JSON.pretty_generate(payload_to_h)
+      expect_processed true, SENDING_PAYLOAD_MSG, API_URL, DONE_MSG, PRINTING_PAYLOAD_MSG, JSON.pretty_generate(run_to_h)
     end
 
     it "should use inspect if the payload can't be pretty-printed" do
       allow(JSON).to receive(:pretty_generate).and_raise(StandardError.new('bug'))
-      expect_processed true, SENDING_PAYLOAD_MSG, API_URL, DONE_MSG, PRINTING_PAYLOAD_MSG, payload_to_h.inspect
+      expect_processed true, SENDING_PAYLOAD_MSG, API_URL, DONE_MSG, PRINTING_PAYLOAD_MSG, run_to_h.inspect
     end
   end
 
@@ -135,7 +132,7 @@ describe ProbeDockProbe::Client do
     end
 
     def expect_payload_to_be_saved
-      expect(File.read(payload_file)).to eq(Oj.dump(payload_to_h, mode: :strict))
+      expect(File.read(payload_file)).to eq(Oj.dump(run_to_h, mode: :strict))
     end
   end
 

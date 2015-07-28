@@ -43,7 +43,7 @@ module ProbeDockProbe
 
     def build_payload test_run, options = {}
       begin
-        TestPayload.new(test_run).to_h options
+        test_run.to_h options
       rescue PayloadError => e
         fail e.message
       end

@@ -1,21 +1,24 @@
 require 'helper'
 
 describe ProbeDockProbe::TestResult do
+  TestResult ||= ProbeDockProbe::TestResult
+
   let(:project_options){ { category: 'A category', tags: %w(a b), tickets: %w(t1 t2) } }
   let(:project_double){ double project_options }
-  let(:example_metadata){ { key: '123' } }
-  let(:example_double){ double description: 'should work', metadata: { probe_dock: example_metadata } }
-  let(:group_doubles){ [ group_double('Something') ] }
-  let(:result_options){ { passed: true, duration: 42 } }
-  let(:result){ ProbeDockProbe::TestResult.new project_double, example_double, group_doubles, result_options }
+  let(:result_options){ { key: '123', name: 'Something should work', fingerprint: 'foo', passed: true, duration: 42 } }
+  let(:result){ TestResult.new project_double, result_options }
   subject{ result }
 
-  it "should use the example key" do
+  it "should use the given key" do
     expect(subject.key).to eq('123')
   end
 
-  it "should build the name from the group's and example's descriptions" do
+  it "should use the given name" do
     expect(subject.name).to eq("Something should work")
+  end
+
+  it "should use the given fingerprint" do
+    expect(subject.fingerprint).to eq('foo')
   end
 
   it "should use the category, tags and tickets of the project" do
@@ -30,16 +33,19 @@ describe ProbeDockProbe::TestResult do
     expect(subject.message).to be_nil
   end
 
-  describe "when the key replaces the options" do
-    let(:example_metadata){ '123' }
+  %i(fingerprint name passed duration).each do |missing_option|
+    describe "with no :#{missing_option} option" do
+      let(:result_options){ super().delete_if{ |k,v| k == missing_option } }
+      subject{ described_class }
 
-    it "should use the example key" do
-      expect(subject.key).to eq('123')
+      it "should raise an error" do
+        expect{ TestResult.new project_double, result_options }.to raise_error(ProbeDockProbe::Error)
+      end
     end
   end
 
   describe "when failing" do
-    let(:result_options){ { passed: false, duration: 12, message: 'Oops' } }
+    let(:result_options){ super().merge passed: false, duration: 12, message: 'Oops' }
 
     it "should use the supplied result data" do
       expect(subject.passed?).to be(false)
@@ -48,55 +54,49 @@ describe ProbeDockProbe::TestResult do
     end
   end
 
-  describe "when grouped" do
-    let(:example_metadata){ super().tap{ |h| h.delete :key } }
-    let :group_doubles do
-      super() + [
-        group_double('default attributes', key: '234', grouped: true),
-        group_double('whatever')
-      ]
+  describe "with no project category, tags or tickets" do
+    let(:project_options){ { category: nil, tags: [], tickets: [] } }
+
+    it "should have no category, tags or tickets" do
+      expect(subject.category).to be_nil
+      expect(subject.tags).to be_empty
+      expect(subject.tickets).to be_empty
     end
+  end
+
+  describe "with custom category, tags and tickets" do
+    let(:result_options){ super().merge category: 'Another category', tags: %w(b c d), tickets: %w(t3) }
+
+    it "should override the category of the project" do
+      expect(subject.category).to eq('Another category')
+    end
+
+    it "should combine the custom tags and the project's" do
+      expect(subject.tags).to match_array(%w(a b c d))
+    end
+
+    it "should combine the custom tickets and the project's" do
+      expect(subject.tickets).to match_array(%w(t1 t2 t3))
+    end
+  end
+
+  describe "when grouped" do
+    let(:result_options){ super().merge grouped: true }
 
     it "should mark the result as grouped" do
       expect(subject.grouped?).to be(true)
     end
 
-    it "should use the grouped key" do
-      expect(subject.key).to eq('234')
-    end
-
-    it "should build the name from the groups' descriptions up the grouped marker" do
-      expect(subject.name).to eq("Something default attributes")
-    end
-  end
-
-  describe "with many groups" do
-    let :group_doubles do
-      super() + [
-        group_double('when created', category: 'Another category'),
-        group_double('with this', tags: 'c'),
-        group_double('and that', tickets: %w(t3 t4))
-      ]
-    end
-
-    it "should build the name from the groups' and example's descriptions" do
-      expect(subject.name).to eq("Something when created with this and that should work")
-    end
-
-    it "should override the category and add new tags and tickets" do
-      expect(subject.category).to eq('Another category')
-      expect(subject.tags).to eq(project_options[:tags] + %w(c))
-      expect(subject.tickets).to eq(project_options[:tickets] + %w(t3 t4))
-    end
-
-    describe "and a custom category, tags and tickets" do
-      let(:example_metadata){ super().merge category: 'Yet another category', tags: 'd', tickets: 't5' }
-
-      it "should override the category and add new tags and tickets" do
-        expect(subject.category).to eq('Yet another category')
-        expect(subject.tags).to eq(project_options[:tags] + %w(c d))
-        expect(subject.tickets).to eq(project_options[:tickets] + %w(t3 t4 t5))
-      end
+    it "should use the given data" do
+      expect(subject.key).to eq('123')
+      expect(subject.name).to eq("Something should work")
+      expect(subject.fingerprint).to eq('foo')
+      expect(subject.category).to eq(project_options[:category])
+      expect(subject.tags).to eq(project_options[:tags])
+      expect(subject.tickets).to eq(project_options[:tickets])
+      expect(subject.passed?).to be(true)
+      expect(subject.duration).to eq(42)
+      expect(subject.message).to be_nil
     end
   end
 
@@ -155,6 +155,7 @@ describe ProbeDockProbe::TestResult do
       {
         'k' => '123',
         'n' => 'Something should work',
+        'f' => 'foo',
         'p' => true,
         'd' => 42,
         'm' => 'Yeehaw!',
@@ -177,79 +178,5 @@ describe ProbeDockProbe::TestResult do
         expect(subject).to eq(expected_result.delete_if{ |k,v| k == 'm' }.merge({ 'c' => nil, 'g' => [], 't' => []}))
       end
     end
-  end
-
-  describe ".meta" do
-    subject{ ProbeDockProbe::TestResult }
-
-    it "should extract Probe Dock metadata" do
-      expect(subject.meta(double(metadata: { probe_dock: { foo: 'bar' } }))).to eq(foo: 'bar')
-    end
-
-    it "should extract Probe Dock metadata when the key replaces the options" do
-      expect(subject.meta(double(metadata: { probe_dock: 'foo' }))).to eq(key: 'foo')
-    end
-
-    it "should not raise an error if there is no Probe Dock metadata" do
-      expect(subject.meta(double(metadata: {}))).to eq({})
-    end
-  end
-
-  describe ".extract_key" do
-    subject{ ProbeDockProbe::TestResult }
-
-    it "should return nil when there is no key" do
-      example = double metadata: {}
-      groups = [ group_double('a'), group_double('b') ]
-      expect(subject.extract_key(example, groups)).to be_nil
-    end
-
-    it "should extract the example key" do
-      example = double metadata: { probe_dock: { key: 'abc' } }
-      expect(subject.extract_key(example, [])).to eq('abc')
-    end
-
-    it "should extract the example key when it replaces the options" do
-      example = double metadata: { probe_dock: 'abc' }
-      expect(subject.extract_key(example, [])).to eq('abc')
-    end
-
-    it "should extract the last group key" do
-      example = double metadata: {}
-      groups = [ group_double('a', key: 'bcd'), group_double('b', key: 'cde'), group_double('c') ]
-      expect(subject.extract_key(example, groups)).to eq('cde')
-    end
-
-    it "should extract the last group key when it replaces the options" do
-      example = double metadata: {}
-      groups = [ group_double('a', 'bcd'), group_double('b', 'cde'), group_double('c') ]
-      expect(subject.extract_key(example, groups)).to eq('cde')
-    end
-
-    it "should override group keys with the example key" do
-      example = double metadata: { probe_dock: { key: 'abc' } }
-      groups = [ group_double('a', key: 'bcd'), group_double('b', key: 'cde') ]
-      expect(subject.extract_key(example, groups)).to eq('abc')
-    end
-  end
-
-  describe ".extract_grouped" do
-    subject{ ProbeDockProbe::TestResult }
-
-    it "should not indicate a normal example as grouped" do
-      example = double metadata: { probe_dock: { key: 'abc' } }
-      groups = [ group_double('a'), group_double('b') ]
-      expect(subject.extract_grouped(example, groups)).to be(false)
-    end
-
-    it "should detect a grouped example" do
-      example = double metadata: {}
-      groups = [ group_double('a'), group_double('b', key: 'cde', grouped: true) ]
-      expect(subject.extract_grouped(example, groups)).to be(true)
-    end
-  end
-
-  def group_double desc, metadata = {}
-    double description: desc, metadata: { probe_dock: metadata }
   end
 end

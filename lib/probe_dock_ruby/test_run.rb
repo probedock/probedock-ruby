@@ -10,11 +10,7 @@ module ProbeDockProbe
     end
 
     def add_result options = {}
-      if options[:grouped] && existing_result = @results.find{ |r| r.grouped? && r.key == options[:key] }
-        existing_result.update options
-      else
-        @results << TestResult.new(@project, options)
-      end
+      @results << TestResult.new(@project, options)
     end
 
     def to_h options = {}

@@ -22,7 +22,6 @@ module ProbeDockProbe
       @tags = (wrap(options[:tags]) + wrap(project.tags)).compact.collect(&:to_s).uniq
       @tickets = (wrap(options[:tickets]) + wrap(project.tickets)).compact.collect(&:to_s).uniq
 
-      @grouped = !!options[:grouped]
       @passed = !!options[:passed]
       @duration = options[:duration]
       @message = options[:message]
@@ -33,21 +32,6 @@ module ProbeDockProbe
 
     def passed?
       @passed
-    end
-
-    def grouped?
-      @grouped
-    end
-
-    def update options = {}
-
-      @passed &&= options[:passed]
-      @duration += options[:duration]
-      @message = [ @message, options[:message] ].compact.join("\n\n") if options[:message]
-
-      @category = options[:category] if options[:category]
-      @tags = (@tags + wrap(options[:tags]).compact.collect(&:to_s)).uniq if options[:tags]
-      @tickets = (@tickets + wrap(options[:tickets]).compact.collect(&:to_s)).uniq if options[:tickets]
     end
 
     def to_h options = {}

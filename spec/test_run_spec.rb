@@ -42,30 +42,11 @@ describe ProbeDockProbe::TestRun do
       expect(subject.results).to eq([ new_result_double ])
     end
 
-    it "should update an existing result with the :grouped option" do
-      existing_result = double key: 'abc', grouped?: true, update: nil
-      subject.results << existing_result
-      expect(TestResult).not_to receive(:new)
-      expect(existing_result).to receive(:update).with(result_options.merge(grouped: true))
-      add_result key: 'abc', grouped: true
-      expect(subject.results).to eq([ existing_result ])
-    end
-
-    it "should not update an existing result that is not grouped" do
-      existing_result = double key: 'abc', grouped?: false
+    it "should not update an existing result" do
+      existing_result = double key: 'abc'
       subject.results << existing_result
       expect(TestResult).to receive(:new).with(project_double, result_options)
-      expect(existing_result).not_to receive(:update)
       add_result key: 'abc'
-      expect(subject.results).to eq([ existing_result, new_result_double ])
-    end
-
-    it "should not update an existing result if the key doesn't match" do
-      existing_result = double key: 'abc', grouped?: true
-      subject.results << existing_result
-      expect(TestResult).to receive(:new).with(project_double, result_options.merge(key: 'bcd', grouped: true))
-      expect(existing_result).not_to receive(:update)
-      add_result key: 'bcd', grouped: true
       expect(subject.results).to eq([ existing_result, new_result_double ])
     end
 

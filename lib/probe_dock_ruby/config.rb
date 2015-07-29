@@ -2,6 +2,14 @@ require 'yaml'
 
 module ProbeDockProbe
 
+  def self.config
+    @config ||= Config.new
+  end
+
+  def self.config= config
+    @config = config
+  end
+
   class Config
     # TODO: add silent/verbose option(s)
     class Error < ProbeDockProbe::Error; end
@@ -173,13 +181,5 @@ module ProbeDockProbe
       return {} unless h.kind_of? Hash
       keys.inject({}){ |memo,k| memo[k.gsub(/(.)([A-Z])/, '\1_\2').downcase.to_sym] = h[k] if h.key?(k); memo }
     end
-  end
-
-  def self.config
-    @config ||= Config.new
-  end
-
-  def self.config= config
-    @config = config
   end
 end

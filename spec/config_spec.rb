@@ -1,14 +1,12 @@
 require 'helper'
 require 'fileutils'
 
-describe ProbeDockProbe::Config do
+describe ProbeDockProbe::Config, fakefs: true do
   include Capture::Helpers
-  include FakeFS::SpecHelpers
   Server ||= ProbeDockProbe::Server
   Project ||= ProbeDockProbe::Project
 
   let(:config){ ProbeDockProbe::Config.new }
-  let(:rspec_config){ double add_formatter: nil }
   let(:project_double){ double update: nil }
   let(:server_doubles){ [] }
   subject{ config }
@@ -16,49 +14,6 @@ describe ProbeDockProbe::Config do
   before :each do
     allow(Project).to receive(:new).and_return(project_double)
     allow(Server).to receive(:new){ |options| server_double(options).tap{ |d| server_doubles << d } }
-  end
-
-  describe ".config" do
-    let(:new_config){ double load!: nil }
-    before(:each){ allow(ProbeDockProbe::Config).to receive(:new).and_return(new_config) }
-
-    it "should create, load and memoize a configuration" do
-      expect(new_config).to receive(:load!).once
-      3.times{ expect(ProbeDockProbe.config).to be(new_config) }
-    end
-  end
-
-  describe ".configure" do
-    let(:load_warnings){ [] }
-    let(:config){ double load!: nil, check!: nil, setup!: nil, load_warnings: load_warnings }
-    before(:each){ allow(ProbeDockProbe).to receive(:config).and_return(config) }
-
-    it "should yield and return the configuration" do
-      result = nil
-      expect{ |b| result = ProbeDockProbe.configure &b }.to yield_with_args(config)
-      expect(result).to be(config)
-    end
-
-    it "should check the configuration" do
-      expect(config).to receive(:check!)
-      ProbeDockProbe.configure
-    end
-
-    it "should not set up if disabled" do
-      expect(config).not_to receive(:setup!)
-      ProbeDockProbe.configure setup: false
-    end
-
-    describe "with load warnings" do
-      let(:load_warnings){ [ 'a', 'b' ] }
-
-      it "should print load warnings" do
-        c = capture{ ProbeDockProbe.configure }
-        expect(c.stdout).to be_empty
-        expect(c.stderr).to match('Probe Dock - a')
-        expect(c.stderr).to match('Probe Dock - b')
-      end
-    end
   end
 
   describe "when created" do
@@ -76,7 +31,6 @@ describe ProbeDockProbe::Config do
   end
 
   before :each do
-    allow(RSpec).to receive(:configure).and_yield(rspec_config)
     @probe_dock_env_vars = ENV.select{ |k,v| k.match /\APROBE_DOCK_/ }.each_key{ |k| ENV.delete k }
   end
 
@@ -105,7 +59,8 @@ describe ProbeDockProbe::Config do
     let(:home_config_path){ File.expand_path('~/.probedock/config.yml') }
     let(:working_config){ nil }
     let(:working_config_path){ '/project/probedock.yml' }
-    let(:loaded_config){ config.tap(&:load!).tap(&:check!) }
+    let(:loaded_config_capture){ capture{ config.tap(&:load!) } }
+    let(:loaded_config){ loaded_config_capture.result }
 
     before :each do
       FileUtils.mkdir_p '/project'
@@ -143,6 +98,8 @@ payload:
 
       it "should have no load warnings" do
         expect(loaded_config.load_warnings).to be_empty
+        expect(loaded_config_capture.stdout).to be_empty
+        expect(loaded_config_capture.stderr).to be_empty
       end
 
       it "should create a project" do
@@ -207,6 +164,8 @@ payload:
 
         it "should have no load warnings" do
           expect(loaded_config.load_warnings).to be_empty
+          expect(loaded_config_capture.stdout).to be_empty
+          expect(loaded_config_capture.stderr).to be_empty
         end
 
         it "should override project attributes" do
@@ -299,6 +258,8 @@ payload:
 
           it "should have no load warnings" do
             expect(subject.load_warnings).to be_empty
+            expect(loaded_config_capture.stdout).to be_empty
+            expect(loaded_config_capture.stderr).to be_empty
           end
 
           it "should override the publishing attributes" do
@@ -372,9 +333,15 @@ workspace: /tmp
 
       describe "with no config files" do
         its(:server){ should have_server_configuration(name: nil) }
-        its(:publish?){ should be(false) }
+        its(:publish?){ should be(true) }
         its(:load_warnings){ should have(2).items }
-        it("should warn that no config file was found"){ should have_elements_matching(:load_warnings, /no config file found/i, home_config_path, working_config_path, /no server defined/i) }
+
+        it "should warn that no config file was found and that no server was defined" do
+          expect(subject).to have_elements_matching(:load_warnings, /no config file found/i, home_config_path, working_config_path, /no server defined/i)
+          expect(loaded_config_capture.stdout).to be_empty
+          expect(loaded_config_capture.stderr).to match(/Probe Dock - .*no config file found.*/i)
+          expect(loaded_config_capture.stderr).to match(/Probe Dock - .*no server defined.*/i)
+        end
       end
 
       describe "with no server" do
@@ -382,7 +349,12 @@ workspace: /tmp
         its(:server){ should have_server_configuration(name: nil) }
         its(:publish?){ should be(true) }
         its(:load_warnings){ should have(1).items }
-        it{ should have_elements_matching(:load_warnings, /no server defined/i) }
+
+        it "should warn that no server was defined" do
+          expect(subject).to have_elements_matching(:load_warnings, /no server defined/i)
+          expect(loaded_config_capture.stdout).to be_empty
+          expect(loaded_config_capture.stderr).to match(/Probe Dock - .*no server defined.*/i)
+        end
       end
 
       describe "with no server selected" do
@@ -395,7 +367,11 @@ publish: true
         its(:server){ should have_server_configuration(name: nil) }
         its(:publish?){ should be(true) }
         its(:load_warnings){ should have(1).items }
-        it{ should have_elements_matching(:load_warnings, /no server name given/i) }
+        it "should warn that no server name was given" do
+          expect(subject).to have_elements_matching(:load_warnings, /no server name given/i)
+          expect(loaded_config_capture.stdout).to be_empty
+          expect(loaded_config_capture.stderr).to match(/Probe Dock - .*no server name given.*/i)
+        end
       end
 
       describe "with an unknown server selected" do

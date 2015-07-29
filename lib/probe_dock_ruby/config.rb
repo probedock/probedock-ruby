@@ -43,9 +43,9 @@ module ProbeDockProbe
       @servers.clear
 
       @load_warnings = []
-      return unless config = load_config_files
+      config = load_config_files
 
-      @publish = parse_env_flag :publish, !!config[:publish]
+      @publish = parse_env_flag :publish, config.fetch(:publish, true)
       @server_name = parse_env_option(:server) || config[:server]
       @local_mode = parse_env_flag(:local) || !!config[:local]
 
@@ -112,7 +112,7 @@ module ProbeDockProbe
 
       configs = [ home_config_file, working_config_file ]
       actual_configs = configs.select{ |f| File.exists? f }
-      return false if actual_configs.empty?
+      return { servers: [], payload: {}, project: {} } if actual_configs.empty?
 
       actual_configs.collect!{ |f| YAML.load_file f }
 

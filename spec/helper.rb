@@ -27,4 +27,8 @@ require 'fakefs/spec_helpers'
 
 Dir[File.join(File.dirname(__FILE__), 'support/**/*.rb')].each{ |f| require f }
 
+RSpec.configure do |config|
+  config.include FakeFS::SpecHelpers, fakefs: true
+end
+
 require 'probedock-ruby'

@@ -1,9 +1,8 @@
 require 'helper'
 require 'json'
 
-describe ProbeDockProbe::Client do
+describe ProbeDockProbe::Client, fakefs: true do
   include Capture::Helpers
-  include FakeFS::SpecHelpers
 
   NO_SERVER_MSG = /no server/i
   PUBLISHING_DISABLED_MSG = /publishing disabled/i

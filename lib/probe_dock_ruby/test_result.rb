@@ -28,6 +28,7 @@ module ProbeDockProbe
       @message = options[:message]
 
       @data = options[:data] || {}
+      @data = @data.deep_stringify_keys if @data.respond_to? :deep_stringify_keys
     end
 
     def passed?

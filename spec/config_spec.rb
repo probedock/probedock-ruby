@@ -3,11 +3,10 @@ require 'fileutils'
 
 describe ProbeDockProbe::Config, fakefs: true do
   include Capture::Helpers
-  Config ||= ProbeDockProbe::Config
   Server ||= ProbeDockProbe::Server
   Project ||= ProbeDockProbe::Project
 
-  let(:config){ Config.new }
+  let(:config){ described_class.new }
   let(:project_double){ double update: nil }
   let(:server_doubles){ [] }
   subject{ config }
@@ -22,7 +21,7 @@ describe ProbeDockProbe::Config, fakefs: true do
 
     before :each do
       ProbeDockProbe.instance_variable_set "@config", nil
-      allow(Config).to receive(:new).and_return(new_config)
+      allow(described_class).to receive(:new).and_return(new_config)
     end
 
     after :each do
@@ -30,13 +29,13 @@ describe ProbeDockProbe::Config, fakefs: true do
     end
 
     it "should create, load and memoize a configuration" do
-      expect(Config).to receive(:new).once
+      expect(described_class).to receive(:new).once
       3.times{ expect(ProbeDockProbe.config).to be(new_config) }
     end
 
     it "should allow to override the configuration" do
 
-      expect(Config).not_to receive(:new)
+      expect(described_class).not_to receive(:new)
 
       custom_config = Object.new
       ProbeDockProbe.config = custom_config
@@ -46,7 +45,7 @@ describe ProbeDockProbe::Config, fakefs: true do
 
     it "should allow to override the configuration after it has been automatically created" do
 
-      expect(Config).to receive(:new).once
+      expect(described_class).to receive(:new).once
       expect(ProbeDockProbe.config).to be(new_config)
 
       custom_config = Object.new
@@ -56,7 +55,7 @@ describe ProbeDockProbe::Config, fakefs: true do
   end
 
   describe "when created" do
-    subject{ Config }
+    subject{ described_class }
 
     it "should create a project" do
       expect(Project).to receive(:new)

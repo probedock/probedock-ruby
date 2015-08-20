@@ -16,7 +16,7 @@ module ProbeDockProbe
 
       @key = options[:key]
       @fingerprint = options[:fingerprint]
-      @name = options[:name]
+      @name = options[:name].to_s
 
       @category = options[:category] || project.category
       @tags = (wrap(options[:tags]) + wrap(project.tags)).compact.collect(&:to_s).uniq
@@ -42,7 +42,7 @@ module ProbeDockProbe
       }.tap do |h|
         h['k'] = @key if @key
         h['m'] = @message if @message
-        h['n'] = @name
+        h['n'] = @name.length > 255 ? "#{@name[0, 252]}..." : @name
         h['c'] = @category
         h['g'] = @tags
         h['t'] = @tickets

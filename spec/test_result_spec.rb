@@ -112,5 +112,13 @@ describe ProbeDockProbe::TestResult do
         expect(subject).to eq(expected_result.delete_if{ |k,v| k == 'm' }.merge({ 'c' => nil, 'g' => [], 't' => []}))
       end
     end
+
+    describe "with a name that is too long" do
+      let(:result_options){ super().merge name: 'x ' * 130 }
+
+      it "should truncate the name" do
+        expect(subject).to eq(expected_result.merge('n' => "#{'x ' * 126}..."))
+      end
+    end
   end
 end

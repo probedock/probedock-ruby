@@ -42,7 +42,7 @@ describe ProbeDockProbe::Server do
     let(:http_responses){ [] }
 
     before :each do
-      ENV.delete_if{ |k,v| k.match(/\APROBE_DOCK_/) }
+      ENV.delete_if{ |k,v| k.match(/\APROBEDOCK_/) }
       allow(HTTParty).to receive(:get){ http_responses.shift }
       allow(HTTParty).to receive(:post){ http_responses.shift }
     end

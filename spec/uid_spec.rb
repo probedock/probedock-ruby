@@ -2,7 +2,7 @@ require 'helper'
 
 describe ProbeDockProbe::UID, fakefs: true do
   UID ||= ProbeDockProbe::UID
-  ENVIRONMENT_VARIABLE = 'PROBE_DOCK_TEST_REPORT_UID'
+  ENVIRONMENT_VARIABLE = 'PROBEDOCK_TEST_REPORT_UID'
   UID_REGEXP = /\d{14}\-[a-f0-9]{8}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{12}/
 
   let(:workspace){ '/tmp' }
@@ -10,7 +10,7 @@ describe ProbeDockProbe::UID, fakefs: true do
   subject{ UID.new uid_options }
 
   before :each do
-    @probe_dock_env_vars = ENV.select{ |k,v| k.match /\APROBE_DOCK_/ }.each_key{ |k| ENV.delete k }
+    @probe_dock_env_vars = ENV.select{ |k,v| k.match /\APROBEDOCK_/ }.each_key{ |k| ENV.delete k }
   end
 
   after :each do
@@ -81,7 +81,7 @@ describe ProbeDockProbe::UID, fakefs: true do
       end
 
       it "should raise an error" do
-        expect{ subject.generate_uid_to_env }.to raise_error(UID::Error, /\$PROBE_DOCK_TEST_REPORT_UID is already defined/)
+        expect{ subject.generate_uid_to_env }.to raise_error(UID::Error, /\$PROBEDOCK_TEST_REPORT_UID is already defined/)
       end
     end
   end

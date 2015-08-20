@@ -3,7 +3,8 @@ require 'securerandom'
 module ProbeDockProbe
 
   class UID
-    ENVIRONMENT_VARIABLE = 'PROBE_DOCK_TEST_REPORT_UID'
+    ENVIRONMENT_VARIABLE = 'PROBEDOCK_TEST_REPORT_UID'
+    OLD_ENVIRONMENT_VARIABLE = 'PROBE_DOCK_TEST_REPORT_UID'
 
     class Error < ProbeDockProbe::Error; end
 
@@ -25,12 +26,14 @@ module ProbeDockProbe
     end
 
     def generate_uid_to_env
-      raise Error.new("$PROBE_DOCK_TEST_REPORT_UID is already defined") if env_var
+      raise Error.new("$PROBEDOCK_TEST_REPORT_UID is already defined") if env_var
       ENV[ENVIRONMENT_VARIABLE] = generate_uid
+      ENV.delete OLD_ENVIRONMENT_VARIABLE
     end
 
     def clean_uid
       ENV.delete ENVIRONMENT_VARIABLE
+      ENV.delete OLD_ENVIRONMENT_VARIABLE
       FileUtils.remove_entry_secure uid_file if @workspace and File.exists?(uid_file)
     end
 
@@ -42,7 +45,7 @@ module ProbeDockProbe
     end
 
     def env_var
-      ENV[ENVIRONMENT_VARIABLE]
+      ENV[ENVIRONMENT_VARIABLE] || ENV[OLD_ENVIRONMENT_VARIABLE]
     end
 
     def current_uid

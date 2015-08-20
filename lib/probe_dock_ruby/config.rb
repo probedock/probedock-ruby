@@ -148,7 +148,7 @@ module ProbeDockProbe
     end
 
     def working_config_file
-      File.expand_path ENV['PROBE_DOCK_CONFIG'] || 'probedock.yml', Dir.pwd
+      File.expand_path parse_env_option(:config) || 'probedock.yml', Dir.pwd
     end
 
     def parse_env_flag name, default = false
@@ -157,8 +157,12 @@ module ProbeDockProbe
     end
 
     def parse_env_option name
-      var = "PROBE_DOCK_#{name.upcase}"
-      ENV.key?(var) ? ENV[var] : nil
+
+      var = "PROBEDOCK_#{name.to_s.upcase}"
+      return ENV[var] if ENV.key? var
+
+      old_var = "PROBE_DOCK_#{name.to_s.upcase}"
+      ENV.key?(old_var) ? ENV[old_var] : nil
     end
 
     def parse_general_options h

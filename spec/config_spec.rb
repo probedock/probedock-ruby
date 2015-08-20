@@ -69,7 +69,7 @@ describe ProbeDockProbe::Config, fakefs: true do
   end
 
   before :each do
-    @probe_dock_env_vars = ENV.select{ |k,v| k.match /\APROBE_DOCK_/ }.each_key{ |k| ENV.delete k }
+    @probe_dock_env_vars = ENV.select{ |k,v| k.match /\APROBEDOCK_/ }.each_key{ |k| ENV.delete k }
   end
 
   after :each do
@@ -273,7 +273,7 @@ payload:
             }
           end
 
-          before(:each){ probe_dock_env_vars.each_pair{ |k,v| ENV["PROBE_DOCK_#{k.upcase}"] = v } }
+          before(:each){ probe_dock_env_vars.each_pair{ |k,v| ENV["PROBEDOCK_#{k.upcase}"] = v } }
 
           it "should override the selected server" do
             expect(loaded_config.server).to have_received(:api_url=).with('http://yet-another-subdomain.example.com')
@@ -292,7 +292,7 @@ payload:
               print_payload: '1'
             }
           end
-          before(:each){ probe_dock_env_vars.each_pair{ |k,v| ENV["PROBE_DOCK_#{k.upcase}"] = v } }
+          before(:each){ probe_dock_env_vars.each_pair{ |k,v| ENV["PROBEDOCK_#{k.upcase}"] = v } }
 
           it "should have no load warnings" do
             expect(subject.load_warnings).to be_empty
@@ -358,9 +358,9 @@ workspace: /tmp
 
         it_should_behave_like "an overriden config"
 
-        describe "with $PROBE_DOCK_CONFIG overriding the working file path" do
+        describe "with $PROBEDOCK_CONFIG overriding the working file path" do
           let(:working_config_path){ '/tmp/foo/probedock.yml' }
-          before(:each){ ENV['PROBE_DOCK_CONFIG'] = '/tmp/foo/probedock.yml' }
+          before(:each){ ENV['PROBEDOCK_CONFIG'] = '/tmp/foo/probedock.yml' }
           it_should_behave_like "an overriden config"
         end
       end

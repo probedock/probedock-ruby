@@ -29,6 +29,7 @@ module ProbeDockProbe
       raise Error.new("$PROBEDOCK_TEST_REPORT_UID is already defined") if env_var
       ENV[ENVIRONMENT_VARIABLE] = generate_uid
       ENV.delete OLD_ENVIRONMENT_VARIABLE
+      ENV[ENVIRONMENT_VARIABLE]
     end
 
     def clean_uid

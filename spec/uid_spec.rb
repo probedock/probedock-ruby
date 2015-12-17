@@ -55,8 +55,10 @@ describe ProbeDockProbe::UID, fakefs: true do
   describe "#generate_uid_to_file" do
 
     it "should generate and save an uid" do
-      subject.generate_uid_to_file
-      expect(File.read(uid_file)).to match(UID_REGEXP)
+      result = subject.generate_uid_to_file
+      generated_uid = File.read uid_file
+      expect(generated_uid).to match(UID_REGEXP)
+      expect(result).to eq(generated_uid)
     end
 
     describe "without a workspace" do
@@ -71,8 +73,9 @@ describe ProbeDockProbe::UID, fakefs: true do
   describe "#generate_uid_to_env" do
 
     it "should generate and save an uid to the environment" do
-      subject.generate_uid_to_env
+      result = subject.generate_uid_to_env
       expect(ENV[ENVIRONMENT_VARIABLE]).to match(UID_REGEXP)
+      expect(result).to eq(ENV[ENVIRONMENT_VARIABLE])
     end
 
     describe "when the variable is already defined" do

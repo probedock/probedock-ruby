@@ -1,6 +1,6 @@
 # encoding: UTF-8
 module ProbeDockProbe
-  VERSION = '0.1.3'
+  VERSION = '0.1.4'
 
   class Error < StandardError; end
   class PayloadError < Error; end

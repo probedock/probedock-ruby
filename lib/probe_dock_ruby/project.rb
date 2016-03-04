@@ -4,6 +4,11 @@ module ProbeDockProbe
     attr_accessor :version, :api_id, :category, :tags, :tickets
 
     def initialize options = {}
+
+      @category = 'RSpec'
+      @tags = []
+      @tickets = []
+
       update options
     end
 
@@ -11,6 +16,7 @@ module ProbeDockProbe
       %w(version api_id category).each do |k|
         instance_variable_set "@#{k}", options[k.to_sym] ? options[k.to_sym].to_s : nil if options.key? k.to_sym
       end
+
       @tags = wrap(options[:tags]).compact if options.key? :tags
       @tickets = wrap(options[:tickets]).compact if options.key? :tickets
     end
@@ -23,7 +29,7 @@ module ProbeDockProbe
 
     private
 
-    def wrap a
+    def wrap(a)
       a.kind_of?(Array) ? a : [ a ]
     end
   end

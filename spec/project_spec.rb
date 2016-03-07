@@ -11,48 +11,6 @@ describe ProbeDockProbe::Project do
     expect(subject_attrs(:version, :api_id, :category, :tags, :tickets)).to eq(project_options)
   end
 
-  describe "without a category option" do
-    let(:project_options){ super().delete_if{ |k,v| k == :category } }
-
-    it "should have the RSpec category by default" do
-      expect(subject_attrs(:version, :api_id, :category, :tags, :tickets)).to eq(project_options.merge(category: 'RSpec'))
-    end
-  end
-
-  describe "with no options" do
-    subject{ Project.new }
-
-    it "should have the RSpec category by default" do
-      expect(subject_attrs(:version, :api_id, :category, :tags, :tickets)).to eq({
-        version: nil,
-        api_id: nil,
-        category: 'RSpec',
-        tags: [],
-        tickets: []
-      })
-    end
-
-    it "should keep the RSpec category if not explicitly overriden" do
-      subject.update version: '1.2.3', tags: %w(foo bar)
-      expect(subject_attrs(:version, :api_id, :category, :tags, :tickets)).to eq({
-        version: '1.2.3',
-        api_id: nil,
-        category: 'RSpec',
-        tags: %w(foo bar),
-        tickets: []
-      })
-    end
-  end
-
-  describe "#category=" do
-    it "should set the category" do
-      subject.category = 'Ruby'
-      expect(subject.category).to eq('Ruby')
-      subject.category = nil
-      expect(subject.category).to be_nil
-    end
-  end
-
   describe "#update" do
     let(:updates){ { version: '2.3.4', api_id: 'def', category: 'Another category', tags: %w(d e), tickets: [] } }
 

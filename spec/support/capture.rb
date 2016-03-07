@@ -17,11 +17,20 @@ class Capture
     "#{@stdout}#{join}#{@stderr}"
   end
 
-  def self.capture &block
+  def self.capture options = {}, &block
     result = nil
     stdout, stderr = StringIO.new, StringIO.new
     $stdout, $stderr = stdout, stderr
-    result = block.call if block_given?
+
+    begin
+      result = block.call if block_given?
+    rescue StandardError => e
+      STDOUT.puts $stdout.string unless options[:silence_errors]
+      STDERR.puts $stderr.string unless options[:silence_errors]
+      $stdout, $stderr = STDOUT, STDERR
+      raise e
+    end
+
     $stdout, $stderr = STDOUT, STDERR
     new result: result, stdout: stdout.string, stderr: stderr.string
   end

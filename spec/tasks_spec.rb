@@ -41,7 +41,7 @@ describe ProbeDockProbe::Tasks do
       end
 
       it "should raise the error" do
-        expect{ capture{ invoke task_name } }.to raise_error(UID::Error, error_message)
+        expect{ capture(silence_errors: true){ invoke task_name } }.to raise_error(UID::Error, error_message)
       end
     end
   end

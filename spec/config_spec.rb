@@ -4,27 +4,27 @@ require 'fileutils'
 describe ProbeDockProbe::Config, fakefs: true do
   include Capture::Helpers
   Server ||= ProbeDockProbe::Server
+  Scm ||= ProbeDockProbe::Scm
   Project ||= ProbeDockProbe::Project
 
   let(:config){ described_class.new }
   let(:project_double){ double update: nil }
+  let(:scm_double){ double update: nil }
   let(:server_doubles){ [] }
   subject{ config }
 
   before :each do
     allow(Project).to receive(:new).and_return(project_double)
+    allow(Scm).to receive(:new).and_return(scm_double)
     allow(Server).to receive(:new){ |options| server_double(options).tap{ |d| server_doubles << d } }
   end
 
   describe "when created" do
     subject{ described_class }
 
-    it "should create a project" do
+    it "should create a project, scm and server configuration" do
       expect(Project).to receive(:new)
-      subject.new
-    end
-
-    it "should create a server" do
+      expect(Scm).to receive(:new)
       expect(Server).to receive(:new)
       subject.new
     end
@@ -42,6 +42,7 @@ describe ProbeDockProbe::Config, fakefs: true do
     its(:publish?){ should be(false) }
     its(:local_mode?){ should be(false) }
     its(:project){ should be(project_double) }
+    its(:scm){ should be(scm_double) }
     its(:print_payload?){ should be(false) }
     its(:save_payload?){ should be(false) }
     its(:servers){ should be_empty }
@@ -94,6 +95,17 @@ workspace: /old
 payload:
   print: true
   save: false
+scm:
+  name: git
+  version: 2.7.2
+  dirty: true
+  remote:
+    name: origin
+    ahead: 4
+    behind: 2
+    url:
+      fetch: git@github.com:probedock/probedock-ruby.git
+      push: https://github.com/probedock/probedock.git
       | }
 
       it "should have no load warnings" do
@@ -102,7 +114,7 @@ payload:
         expect(loaded_config_capture.stderr).to be_empty
       end
 
-      it "should create a project" do
+      it "should update the project configuration" do
         expect(project_double).to receive(:update).with({
           version: '1.2.3',
           api_id: '9876543210',
@@ -112,6 +124,25 @@ payload:
         })
         config.load!
         expect(config.project).to be(project_double)
+      end
+
+      it "should update the scm configuration" do
+        expect(scm_double).to receive(:update).with({
+          name: 'git',
+          version: '2.7.2',
+          dirty: true,
+          remote: {
+            name: 'origin',
+            ahead: 4,
+            behind: 2,
+            url: {
+              fetch: 'git@github.com:probedock/probedock-ruby.git',
+              push: 'https://github.com/probedock/probedock.git'
+            }
+          }
+        })
+        config.load!
+        expect(config.scm).to be(scm_double)
       end
 
       it "should set the publishing attributes" do

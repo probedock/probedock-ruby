@@ -5,12 +5,13 @@ module ProbeDockProbe
     # TODO: add silent/verbose option(s)
     class Error < ProbeDockProbe::Error; end
     attr_writer :publish, :local_mode, :print_payload, :save_payload
-    attr_reader :project, :server, :workspace, :load_warnings
+    attr_reader :project, :server, :scm, :workspace, :load_warnings
 
     def initialize
       @servers = []
       @server = Server.new
       @project = Project.new
+      @scm = Scm.new
       @publish, @local_mode, @print_payload, @save_payload = false, false, false, false
       @load_warnings = []
     end
@@ -71,6 +72,10 @@ module ProbeDockProbe
       project_options.merge! api_id: @server.project_api_id if @server and @server.project_api_id
       @project.update project_options
 
+      scm_options = config[:scm]
+      add_scm_env_options! scm_options
+      @scm.update scm_options
+
       yield self if block_given?
 
       check!
@@ -112,7 +117,7 @@ module ProbeDockProbe
 
       configs = [ home_config_file, working_config_file ]
       actual_configs = configs.select{ |f| File.exists? f }
-      return { servers: [], payload: {}, project: {} } if actual_configs.empty?
+      return { servers: [], payload: {}, project: {}, scm: { remote: { url: {} } } } if actual_configs.empty?
 
       actual_configs.collect!{ |f| YAML.load_file f }
 
@@ -129,6 +134,7 @@ module ProbeDockProbe
 
         memo[:payload] = (memo[:payload] || {}).merge parse_payload_options(yml['payload'])
         memo[:project] = (memo[:project] || {}).merge parse_project_options(yml['project'])
+        memo[:scm] = (memo[:scm] || {}).merge(parse_scm_options(yml['scm']))
 
         memo
       end
@@ -142,11 +148,6 @@ module ProbeDockProbe
       File.expand_path parse_env_option(:config) || 'probedock.yml', Dir.pwd
     end
 
-    def parse_env_flag name, default = false
-      val = parse_env_option name
-      val ? !!val.to_s.strip.match(/\A(1|y|yes|t|true)\Z/i) : default
-    end
-
     def parse_env_option name
 
       var = "PROBEDOCK_#{name.to_s.upcase}"
@@ -154,6 +155,16 @@ module ProbeDockProbe
 
       old_var = "PROBE_DOCK_#{name.to_s.upcase}"
       ENV.key?(old_var) ? ENV[old_var] : nil
+    end
+
+    def parse_env_flag name, default = false
+      val = parse_env_option name
+      val ? !!val.to_s.strip.match(/\A(1|y|yes|t|true)\Z/i) : default
+    end
+
+    def parse_env_integer name, default = nil
+      val = parse_env_option name
+      val ? val.to_i : default
     end
 
     def parse_general_options h
@@ -170,6 +181,35 @@ module ProbeDockProbe
 
     def parse_project_options h
       parse_options h, %w(version apiId category tags tickets)
+    end
+
+    def parse_scm_options h
+      parse_options(h, %w(name version dirty)).tap do |options|
+        scm_h = h.kind_of?(Hash) ? h : {}
+        options[:remote] = parse_options(scm_h['remote'], %w(name url ahead behind)).tap do |remote_options|
+          remote_h = scm_h['remote'].kind_of?(Hash) ? scm_h['remote'] : {}
+          remote_options[:url] = parse_options(remote_h['url'], %w(fetch push))
+        end
+      end
+    end
+
+    def add_scm_env_options! options
+      options.merge!({
+        name: parse_env_option(:scm_name),
+        version: parse_env_option(:scm_version),
+        dirty: parse_env_flag(:scm_dirty, nil),
+      }.reject{ |k,v| v.nil? })
+
+      options[:remote].merge!({
+        name: parse_env_option(:scm_remote_name),
+        ahead: parse_env_integer(:scm_remote_ahead),
+        behind: parse_env_integer(:scm_remote_behind)
+      }.reject{ |k,v| v.nil? })
+
+      options[:remote][:url].merge!({
+        fetch: parse_env_option(:scm_remote_url_fetch),
+        push: parse_env_option(:scm_remote_url_push)
+      }.reject{ |k,v| v.nil? })
     end
 
     def parse_options h, keys

@@ -1,15 +1,6 @@
 require 'yaml'
 
 module ProbeDockProbe
-
-  def self.config
-    @config ||= Config.new
-  end
-
-  def self.config= config
-    @config = config
-  end
-
   class Config
     # TODO: add silent/verbose option(s)
     class Error < ProbeDockProbe::Error; end

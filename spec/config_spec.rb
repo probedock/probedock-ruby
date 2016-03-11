@@ -8,13 +8,11 @@ describe ProbeDockProbe::Config, fakefs: true do
   Project ||= ProbeDockProbe::Project
 
   let(:config){ described_class.new }
-  let(:project_double){ double update: nil }
   let(:scm_double){ double update: nil }
   let(:probe_dock_env_vars){ {} }
   subject{ config }
 
   before :each do
-    allow(Project).to receive(:new).and_return(project_double)
     allow(Scm).to receive(:new).and_return(scm_double)
   end
 
@@ -41,7 +39,7 @@ describe ProbeDockProbe::Config, fakefs: true do
   describe "default attributes" do
     its(:publish?){ should be(false) }
     its(:local_mode?){ should be(false) }
-    its(:project){ should be(project_double) }
+    its(:project){ should be_a(Project) }
     its(:scm){ should be(scm_double) }
     its(:print_payload?){ should be(false) }
     its(:save_payload?){ should be(false) }
@@ -80,9 +78,16 @@ describe ProbeDockProbe::Config, fakefs: true do
       end
 
       it "should update the project" do
-        expect(project_double).to receive(:update).with(expected_project_updates)
+
+        project = config.project
+        expect(project).to receive(:clear).and_call_original
+        expect(project).to receive(:update).and_call_original
+
         config.load!
-        expect(config.project).to be(project_double)
+
+        actual_project = %i(api_id version category tags tickets).inject({}){ |memo,attr| memo[attr] = config.project.send(attr); memo }.reject{ |k,v| v.nil? || (v.respond_to?(:empty?) && v.empty?) }
+
+        expect(actual_project).to eq(expected_project_configuration)
       end
 
       it "should update the scm configuration" do
@@ -126,7 +131,7 @@ server: a
 |
       end
 
-      let :expected_project_updates do
+      let :expected_project_configuration do
         {
           version: '1.2.3',
           api_id: 'abcdef'
@@ -184,7 +189,7 @@ publish: true
         }
       end
 
-      let :expected_project_updates do
+      let :expected_project_configuration do
         {
           version: '1.2.3',
           api_id: 'abcdef'
@@ -261,7 +266,7 @@ scm:
 |
       end
 
-      let :expected_project_updates do
+      let :expected_project_configuration do
         {
           version: '1.2.3',
           api_id: 'bcdefg',
@@ -353,12 +358,12 @@ scm:
 |
         end
 
-        let :expected_project_updates do
+        let :expected_project_configuration do
           {
             version: '2.3.4',
             api_id: 'cdefgh',
             category: 'Another category',
-            tags: 'oneTag',
+            tags: %w(oneTag),
             tickets: %w(t1 t2 t3)
           }
         end
@@ -424,12 +429,12 @@ scm:
             }
           end
 
-          let :expected_project_updates do
+          let :expected_project_configuration do
             {
               version: '2.3.4',
               api_id: 'defghi',
               category: 'Another category',
-              tags: 'oneTag',
+              tags: %w(oneTag),
               tickets: %w(t1 t2 t3)
             }
           end

@@ -4,15 +4,20 @@ module ProbeDockProbe
     attr_accessor :version, :api_id, :category, :tags, :tickets
 
     def initialize options = {}
-      update options
+      update({
+        tags: [],
+        tickets: []
+      }.merge(options))
     end
 
     def update options = {}
-      %w(version api_id category).each do |k|
-        instance_variable_set "@#{k}", options[k.to_sym] ? options[k.to_sym].to_s : nil if options.key? k.to_sym
-      end
-      @tags = wrap(options[:tags]).compact if options.key? :tags
-      @tickets = wrap(options[:tickets]).compact if options.key? :tickets
+      %i(version api_id category).each{ |attr| set_string(attr, options[attr]) if options.key?(attr) }
+      %i(tags tickets).each{ |attr| set_array(attr, options[attr]) if options.key?(attr) }
+    end
+
+    def clear
+      %i(api_id version category).each{ |attr| set_string(attr, nil) }
+      %i(tags tickets).each{ |attr| set_array(attr, []) }
     end
 
     def validate!
@@ -22,6 +27,14 @@ module ProbeDockProbe
     end
 
     private
+
+    def set_string attr, value
+      instance_variable_set "@#{attr}", value ? value.to_s : nil
+    end
+
+    def set_array attr, value
+      instance_variable_set "@#{attr}", wrap(value).compact
+    end
 
     def wrap a
       a.kind_of?(Array) ? a : [ a ]

@@ -5,9 +5,7 @@ module ProbeDockProbe
     attr_accessor :name, :version, :dirty, :remote
 
     def initialize
-      @remote = OpenStruct.new({
-        url: OpenStruct.new
-      })
+      clear
     end
 
     def update options = {}
@@ -26,6 +24,13 @@ module ProbeDockProbe
       remote_url_options = remote_options[:url].kind_of?(Hash) ? remote_options[:url] : {}
       url[:fetch] = remote_url_options[:fetch] ? remote_url_options[:fetch].to_s : nil if remote_url_options.key?(:fetch)
       url[:push] = remote_url_options[:push] ? remote_url_options[:push].to_s : nil if remote_url_options.key?(:push)
+    end
+
+    def clear
+      %i(name version dirty).each{ |attr| instance_variable_set("@#{attr}", nil) }
+      @remote = OpenStruct.new({
+        url: OpenStruct.new
+      })
     end
   end
 end

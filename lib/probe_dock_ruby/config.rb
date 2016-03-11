@@ -41,6 +41,7 @@ module ProbeDockProbe
     def load!
 
       @project.clear
+      @scm.clear
       @server.clear
       @servers.clear
 

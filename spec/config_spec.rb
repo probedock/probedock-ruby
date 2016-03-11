@@ -8,12 +8,16 @@ describe ProbeDockProbe::Config, fakefs: true do
   Project ||= ProbeDockProbe::Project
 
   let(:config){ described_class.new }
-  let(:scm_double){ double update: nil }
   let(:probe_dock_env_vars){ {} }
   subject{ config }
 
   before :each do
-    allow(Scm).to receive(:new).and_return(scm_double)
+    @probe_dock_env_vars = ENV.select{ |k,v| k.match /\APROBEDOCK_/ }.each_key{ |k| ENV.delete k }
+    probe_dock_env_vars.each_pair{ |k,v| ENV["PROBEDOCK_#{k.upcase}"] = v.to_s }
+  end
+
+  after :each do
+    @probe_dock_env_vars.each_pair{ |k,v| ENV[k] = v }
   end
 
   describe "when created" do
@@ -27,20 +31,11 @@ describe ProbeDockProbe::Config, fakefs: true do
     end
   end
 
-  before :each do
-    @probe_dock_env_vars = ENV.select{ |k,v| k.match /\APROBEDOCK_/ }.each_key{ |k| ENV.delete k }
-    probe_dock_env_vars.each_pair{ |k,v| ENV["PROBEDOCK_#{k.upcase}"] = v.to_s }
-  end
-
-  after :each do
-    @probe_dock_env_vars.each_pair{ |k,v| ENV[k] = v }
-  end
-
   describe "default attributes" do
     its(:publish?){ should be(false) }
     its(:local_mode?){ should be(false) }
     its(:project){ should be_a(Project) }
-    its(:scm){ should be(scm_double) }
+    its(:scm){ should be_an(Scm) }
     its(:print_payload?){ should be(false) }
     its(:save_payload?){ should be(false) }
     its(:servers){ should be_empty }
@@ -85,15 +80,23 @@ describe ProbeDockProbe::Config, fakefs: true do
 
         config.load!
 
-        actual_project = %i(api_id version category tags tickets).inject({}){ |memo,attr| memo[attr] = config.project.send(attr); memo }.reject{ |k,v| v.nil? || (v.respond_to?(:empty?) && v.empty?) }
+        actual_project = %i(api_id version category tags tickets).inject({}){ |memo,attr| memo[attr] = project.send(attr); memo }.reject{ |k,v| v.nil? || (v.respond_to?(:empty?) && v.empty?) }
 
         expect(actual_project).to eq(expected_project_configuration)
       end
 
       it "should update the scm configuration" do
-        expect(scm_double).to receive(:update).with(expected_scm_updates)
+
+        scm = config.scm
+        expect(config.scm).to receive(:update).and_call_original
+
         config.load!
-        expect(config.scm).to be(scm_double)
+
+        actual_scm = %i(name version dirty).inject({}){ |memo,attr| memo[attr] = scm.send(attr); memo }.reject{ |k,v| v.nil? }
+        actual_scm[:remote] = scm.remote.to_h
+        actual_scm[:remote][:url] = scm.remote[:url].to_h
+
+        expect(actual_scm).to eq(expected_scm_configuration)
       end
 
       it "should return client options" do
@@ -138,7 +141,7 @@ server: a
         }
       end
 
-      let :expected_scm_updates do
+      let :expected_scm_configuration do
         {
           remote: {
             url: {}
@@ -196,7 +199,7 @@ publish: true
         }
       end
 
-      let :expected_scm_updates do
+      let :expected_scm_configuration do
         {
           remote: {
             url: {}
@@ -276,7 +279,7 @@ scm:
         }
       end
 
-      let :expected_scm_updates do
+      let :expected_scm_configuration do
         {
           name: 'git',
           version: '2.7.2',
@@ -368,7 +371,7 @@ scm:
           }
         end
 
-        let :expected_scm_updates do
+        let :expected_scm_configuration do
           {
             name: 'custom',
             version: '1.2.3',
@@ -439,7 +442,7 @@ scm:
             }
           end
 
-          let :expected_scm_updates do
+          let :expected_scm_configuration do
             {
               name: 'custom',
               version: '1.2.3',

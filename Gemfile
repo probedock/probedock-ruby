@@ -6,13 +6,13 @@ source "http://rubygems.org"
 gem 'oj', '~> 2.1'
 gem 'httparty', '~> 0.13'
 gem 'paint', '~> 1.0'
-gem 'rake', '~> 10.1'
+gem 'rake', '~> 11.1'
 
 # Add dependencies to develop your gem here.
 # Include everything needed to run rake, tests, features, etc.
 group :development do
   gem 'jeweler', '~> 2.0'
-  gem 'rake-version', '~> 0.4'
+  gem 'rake-version', '~> 1.0'
   gem 'simplecov', '~> 0.10', require: false
   gem 'fakefs', '~> 0.6', require: 'fakefs/safe'
   gem 'rspec', '~> 3.1'

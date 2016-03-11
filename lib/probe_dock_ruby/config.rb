@@ -54,19 +54,7 @@ module ProbeDockProbe
       @print_payload = parse_env_flag :print_payload, !!config[:payload][:print]
       @save_payload = parse_env_flag :save_payload, !!config[:payload][:save]
 
-      @servers, server = build_servers config
-
-      if server
-        @server = server
-      else
-        @server.name = @server_name
-      end
-
-      {
-        api_url: parse_env_option(:server_api_url),
-        api_token: parse_env_option(:server_api_token),
-        project_api_id: parse_env_option(:server_project_api_id)
-      }.each{ |k,v| @server.send "#{k}=", v if v }
+      build_servers! config
 
       project_options = config[:project]
       project_options.merge! api_id: @server.project_api_id if @server and @server.project_api_id
@@ -92,25 +80,47 @@ module ProbeDockProbe
       actual_configs = configs.select{ |f| File.exists? f }
 
       if actual_configs.empty?
-        @load_warnings << %|no config file found, looking for:\n     #{configs.join "\n     "}|
+        @load_warnings << %|No config file found, looking for:\n     #{configs.join "\n     "}|
       end
 
-      if @servers.empty?
+      if @servers.length == 1 && @server.empty?
         @load_warnings << "No server defined"
-      elsif !@server_name && !@server.name
+      elsif @server.empty? && !@server_name
         @load_warnings << "No server name given"
+      elsif @server.empty? && @server_name
+        @load_warnings << "Unknown server #{@server_name}"
       end
     end
 
-    def build_servers config
+    def build_servers! config
 
       default_server_options = { project_api_id: config[:project][:api_id] }
-      servers = config[:servers].inject({}) do |memo,(name, options)|
-        memo[name] = Server.new default_server_options.merge(options).merge(name: name)
+      server_options = config[:servers].inject({}) do |memo,(name, options)|
+        memo[name] = {}.merge(options).merge(name: name)
         memo
       end
 
-      [ servers.values, servers[@server_name.to_s.strip] ]
+      name = @server_name.to_s.strip
+
+      @servers = server_options.values.collect do |options|
+        Server.new options
+      end
+
+      if @server_name && server = @servers.find{ |server| server.name == name }
+        @server = server
+      else
+        @servers << @server
+      end
+
+      if @server
+        {
+          api_url: parse_env_option(:server_api_url),
+          api_token: parse_env_option(:server_api_token),
+          project_api_id: parse_env_option(:server_project_api_id)
+        }.reject{ |k,v| v.nil? }.each do |k,v|
+          @server.send("#{k}=", v)
+        end
+      end
     end
 
     def load_config_files
@@ -172,7 +182,7 @@ module ProbeDockProbe
     end
 
     def parse_server_options h
-      parse_options h, %w(name apiUrl apiToken apiVersion projectApiId)
+      parse_options h, %w(name apiUrl apiToken projectApiId)
     end
 
     def parse_payload_options h

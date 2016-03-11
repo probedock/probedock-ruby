@@ -10,13 +10,12 @@ describe ProbeDockProbe::Config, fakefs: true do
   let(:config){ described_class.new }
   let(:project_double){ double update: nil }
   let(:scm_double){ double update: nil }
-  let(:server_doubles){ [] }
+  let(:probe_dock_env_vars){ {} }
   subject{ config }
 
   before :each do
     allow(Project).to receive(:new).and_return(project_double)
     allow(Scm).to receive(:new).and_return(scm_double)
-    allow(Server).to receive(:new){ |options| server_double(options).tap{ |d| server_doubles << d } }
   end
 
   describe "when created" do
@@ -32,6 +31,7 @@ describe ProbeDockProbe::Config, fakefs: true do
 
   before :each do
     @probe_dock_env_vars = ENV.select{ |k,v| k.match /\APROBEDOCK_/ }.each_key{ |k| ENV.delete k }
+    probe_dock_env_vars.each_pair{ |k,v| ENV["PROBEDOCK_#{k.upcase}"] = v.to_s }
   end
 
   after :each do
@@ -72,22 +72,174 @@ describe ProbeDockProbe::Config, fakefs: true do
       Dir.chdir '/project'
     end
 
-    describe "with full information in the home config" do
-      let(:home_config){ %|
+    shared_examples_for "a loaded configuration" do
+      it "should have no load warnings" do
+        expect(loaded_config.load_warnings).to be_empty
+        expect(loaded_config_capture.stdout).to be_empty
+        expect(loaded_config_capture.stderr).to be_empty
+      end
+
+      it "should update the project" do
+        expect(project_double).to receive(:update).with(expected_project_updates)
+        config.load!
+        expect(config.project).to be(project_double)
+      end
+
+      it "should update the scm configuration" do
+        expect(scm_double).to receive(:update).with(expected_scm_updates)
+        config.load!
+        expect(config.scm).to be(scm_double)
+      end
+
+      it "should return client options" do
+        expect(loaded_config.client_options).to eq(expected_client_options)
+      end
+
+      it "should create the server(s)" do
+        config.load!
+
+        actual_servers = config.servers.collect do |server|
+          %i(name api_url api_token project_api_id).inject({}){ |memo,k| memo[k] = server.send(k); memo }.reject{ |k,v| v.nil? }
+        end
+
+        expect(actual_servers).to eq(expected_servers)
+      end
+
+      it "should select the specified server" do
+        server = expected_selected_server ? loaded_config.servers.find{ |server| server.name == expected_selected_server } : loaded_config.server
+        expect(loaded_config.server).to eq(server)
+      end
+    end
+
+    describe "with minimal information in the home config" do
+      let :home_config do
+%|
 servers:
   a:
     apiUrl: "http://example.com/api"
-    apiToken: "abcdefghijklmnopqrstuvwxyz"
-    projectApiId: "9876543210"
-  b:
-    apiUrl: "http://subdomain.example.com/api"
-    apiToken: "bcdefghijklmnopqrstuvwxyza"
+    apiToken: secret
 project:
   version: 1.2.3
-  apiId: "0123456789"
+  apiId: abcdef
+publish: true
+server: a
+|
+      end
+
+      let :expected_project_updates do
+        {
+          version: '1.2.3',
+          api_id: 'abcdef'
+        }
+      end
+
+      let :expected_scm_updates do
+        {
+          remote: {
+            url: {}
+          }
+        }
+      end
+
+      let :expected_client_options do
+        {
+          publish: true,
+          local_mode: false,
+          print_payload: false,
+          save_payload: false
+        }
+      end
+
+      let :expected_servers do
+        [
+          {
+            name: 'a',
+            api_url: 'http://example.com/api',
+            api_token: 'secret'
+          }
+        ]
+      end
+
+      let :expected_selected_server, &->{ 'a' }
+
+      it_should_behave_like "a loaded configuration"
+    end
+
+    describe "with minimal information in the working directory config and environment variables" do
+      let :working_config do
+%|
+project:
+  version: 1.2.3
+  apiId: abcdef
+publish: true
+|
+      end
+
+      let :probe_dock_env_vars do
+        {
+          publish: true,
+          server_api_url: 'http://example.com/api',
+          server_api_token: 'secret',
+          server_project_api_id: 'abcdef'
+        }
+      end
+
+      let :expected_project_updates do
+        {
+          version: '1.2.3',
+          api_id: 'abcdef'
+        }
+      end
+
+      let :expected_scm_updates do
+        {
+          remote: {
+            url: {}
+          }
+        }
+      end
+
+      let :expected_client_options do
+        {
+          publish: true,
+          local_mode: false,
+          print_payload: false,
+          save_payload: false
+        }
+      end
+
+      let :expected_servers do
+        [
+          {
+            api_url: 'http://example.com/api',
+            api_token: 'secret',
+            project_api_id: 'abcdef'
+          }
+        ]
+      end
+
+      let :expected_selected_server, &->{ nil }
+
+      it_should_behave_like "a loaded configuration"
+    end
+
+    describe "with full information in the home config" do
+      let :home_config do
+%|
+servers:
+  a:
+    apiUrl: "http://example.com/api"
+    apiToken: secret
+    projectApiId: bcdefg
+  b:
+    apiUrl: "http://subdomain.example.com/api"
+    apiToken: secret2
+project:
+  version: 1.2.3
+  apiId: abcdef
   category: A category
   tags: [ a, b ]
-  tickets: [ c, d ]
+  tickets: [ t1, t2, t3 ]
 publish: true
 local: true
 server: a
@@ -106,28 +258,21 @@ scm:
     url:
       fetch: git@github.com:probedock/probedock-ruby.git
       push: https://github.com/probedock/probedock.git
-      | }
-
-      it "should have no load warnings" do
-        expect(loaded_config.load_warnings).to be_empty
-        expect(loaded_config_capture.stdout).to be_empty
-        expect(loaded_config_capture.stderr).to be_empty
+|
       end
 
-      it "should update the project configuration" do
-        expect(project_double).to receive(:update).with({
+      let :expected_project_updates do
+        {
           version: '1.2.3',
-          api_id: '9876543210',
+          api_id: 'bcdefg',
           category: 'A category',
-          tags: [ 'a', 'b' ],
-          tickets: [ 'c', 'd' ]
-        })
-        config.load!
-        expect(config.project).to be(project_double)
+          tags: %w(a b),
+          tickets: %w(t1 t2 t3)
+        }
       end
 
-      it "should update the scm configuration" do
-        expect(scm_double).to receive(:update).with({
+      let :expected_scm_updates do
+        {
           name: 'git',
           version: '2.7.2',
           dirty: true,
@@ -140,221 +285,201 @@ scm:
               push: 'https://github.com/probedock/probedock.git'
             }
           }
-        })
-        config.load!
-        expect(config.scm).to be(scm_double)
+        }
       end
 
-      it "should set the publishing attributes" do
-        expect(attrs_hash(loaded_config, :publish?, :local_mode?)).to eq({
-          publish?: true,
-          local_mode?: true
-        });
-      end
-
-      it "should set the workspace attributes" do
-        expect(attrs_hash(loaded_config, :workspace, :print_payload?, :save_payload?)).to eq({
-          workspace: '/old',
-          print_payload?: true,
-          save_payload?: false
-        })
-      end
-
-      it "should return client options" do
-        expect(loaded_config.client_options).to eq({
+      let :expected_client_options do
+        {
           publish: true,
           local_mode: true,
-          workspace: '/old',
           print_payload: true,
-          save_payload: false
-        })
+          save_payload: false,
+          workspace: '/old'
+        }
       end
 
-      it "should create two servers" do
-        expect(Server).to receive(:new).with({
-          name: 'a',
-          api_url: 'http://example.com/api',
-          api_token: 'abcdefghijklmnopqrstuvwxyz',
-          project_api_id: '9876543210'
-        }).ordered
-        expect(Server).to receive(:new).with({
-          name: 'b',
-          api_url: 'http://subdomain.example.com/api',
-          api_token: 'bcdefghijklmnopqrstuvwxyza',
-          project_api_id: '0123456789'
-        })
-        config.load!
-        expect(config.servers).to eq(server_doubles.last(2))
-      end
-
-      it "should select the specified server" do
-        expect(loaded_config.server).to eq(loaded_config.servers[0])
-      end
-
-      shared_examples_for "an overriden config" do
-
-        it "should have no load warnings" do
-          expect(loaded_config.load_warnings).to be_empty
-          expect(loaded_config_capture.stdout).to be_empty
-          expect(loaded_config_capture.stderr).to be_empty
-        end
-
-        it "should override project attributes" do
-          expect(project_double).to receive(:update).with({
-            version: '2.3.4',
-            api_id: '9876543210',
-            category: 'Another category',
-            tags: 'oneTag',
-            tickets: [ 'c', 'd' ]
-          })
-          config.load!
-          expect(config.project).to be(project_double)
-        end
-
-        it "should override the publishing attributes" do
-          expect(attrs_hash(loaded_config, :publish?, :local_mode?)).to eq({
-            publish?: true,
-            local_mode?: false
-          });
-        end
-
-        it "should set the workspace attributes" do
-          expect(attrs_hash(loaded_config, :workspace, :print_payload?, :save_payload?)).to eq({
-            workspace: '/tmp',
-            print_payload?: false,
-            save_payload?: true
-          })
-        end
-
-        it "should override client options" do
-          expect(loaded_config.client_options).to eq({
-            publish: true,
-            local_mode: false,
-            workspace: '/tmp',
-            print_payload: false,
-            save_payload: true
-          })
-        end
-
-        it "should create two servers" do
-          expect(Server).to receive(:new).with({
+      let :expected_servers do
+        [
+          {
             name: 'a',
             api_url: 'http://example.com/api',
-            api_token: 'abcdefghijklmnopqrstuvwxyz',
-            project_api_id: '9876543210'
-          }).ordered
-          expect(Server).to receive(:new).with({
+            api_token: 'secret',
+            project_api_id: 'bcdefg'
+          },
+          {
             name: 'b',
-            api_url: 'http://other-subdomain.example.com/api',
-            api_token: 'cdefghijklmnopqrstuvwxyzab',
-            project_api_id: '0000000000'
-          })
-          config.load!
-          expect(config.servers).to eq(server_doubles.last(2))
-        end
-
-        it "should select the specified server" do
-          expect(loaded_config.server).to eq(loaded_config.servers[0])
-        end
-
-        describe "with environment variables overriding the server configuration" do
-          let :probe_dock_env_vars do
-            {
-              server_api_url: 'http://yet-another-subdomain.example.com',
-              server_api_token: 'defghijklmnopqrstuvwxyzabc',
-              server_project_api_id: '111111111'
-            }
-          end
-
-          before(:each){ probe_dock_env_vars.each_pair{ |k,v| ENV["PROBEDOCK_#{k.upcase}"] = v } }
-
-          it "should override the selected server" do
-            expect(loaded_config.server).to have_received(:api_url=).with('http://yet-another-subdomain.example.com')
-            expect(loaded_config.server).to have_received(:api_token=).with('defghijklmnopqrstuvwxyzabc')
-            expect(loaded_config.server).to have_received(:project_api_id=).with('111111111')
-          end
-        end
-
-        describe "with overriding environment variables" do
-          let :probe_dock_env_vars do
-            {
-              publish: '0',
-              local: '1',
-              server: 'b',
-              workspace: '/opt',
-              print_payload: '1'
-            }
-          end
-          before(:each){ probe_dock_env_vars.each_pair{ |k,v| ENV["PROBEDOCK_#{k.upcase}"] = v } }
-
-          it "should have no load warnings" do
-            expect(subject.load_warnings).to be_empty
-            expect(loaded_config_capture.stdout).to be_empty
-            expect(loaded_config_capture.stderr).to be_empty
-          end
-
-          it "should override the publishing attributes" do
-            expect(attrs_hash(loaded_config, :publish?, :local_mode?)).to eq({
-              publish?: false,
-              local_mode?: true
-            });
-          end
-
-          it "should set the workspace attributes" do
-            expect(attrs_hash(loaded_config, :workspace, :print_payload?, :save_payload?)).to eq({
-              workspace: '/opt',
-              print_payload?: true,
-              save_payload?: true
-            })
-          end
-
-          it "should select the specified server" do
-            expect(loaded_config.server).to eq(loaded_config.servers[1])
-          end
-
-          describe "with environment variables overriding the server configuration" do
-            let :probe_dock_env_vars do
-              {
-                server_api_url: 'http://yet-another-subdomain.example.com',
-                server_api_token: 'defghijklmnopqrstuvwxyzabc',
-                server_project_api_id: '111111111'
-              }
-            end
-
-            it "should override the selected server" do
-              expect(loaded_config.server).to have_received(:api_url=).with('http://yet-another-subdomain.example.com')
-              expect(loaded_config.server).to have_received(:api_token=).with('defghijklmnopqrstuvwxyzabc')
-              expect(loaded_config.server).to have_received(:project_api_id=).with('111111111')
-            end
-          end
-        end
+            api_url: 'http://subdomain.example.com/api',
+            api_token: 'secret2'
+          }
+        ]
       end
 
-      describe "with an overriding working directory config" do
-        let(:working_config){ %|
+      let :expected_selected_server, &->{ 'a' }
+
+      it_should_behave_like "a loaded configuration"
+
+      describe "with overrides in the working directory config" do
+        let :working_config do
+%|
 servers:
+  a:
+    apiToken: secret3
   b:
-    apiUrl: "http://other-subdomain.example.com/api"
-    apiToken: "cdefghijklmnopqrstuvwxyzab"
+    apiUrl: "http://another-subdomain.example.com/api"
+    apiToken: secret4
 project:
   version: 2.3.4
-  apiId: "0000000000"
+  apiId: cdefgh
   category: Another category
   tags: oneTag
 payload:
   print: false
   save: true
-publish: true
+publish: false
 local: false
 workspace: /tmp
-        | }
+server: b
+scm:
+  name: custom
+  version: 1.2.3
+  dirty: false
+  remote:
+    name: upstream
+    ahead: 3
+    behind: 23
+    url:
+      fetch: https://github.com/probedock/probedock-node.git
+      push: git@github.com:probedock/probedock.git
+|
+        end
 
-        it_should_behave_like "an overriden config"
+        let :expected_project_updates do
+          {
+            version: '2.3.4',
+            api_id: 'cdefgh',
+            category: 'Another category',
+            tags: 'oneTag',
+            tickets: %w(t1 t2 t3)
+          }
+        end
 
-        describe "with $PROBEDOCK_CONFIG overriding the working file path" do
-          let(:working_config_path){ '/tmp/foo/probedock.yml' }
-          before(:each){ ENV['PROBEDOCK_CONFIG'] = '/tmp/foo/probedock.yml' }
-          it_should_behave_like "an overriden config"
+        let :expected_scm_updates do
+          {
+            name: 'custom',
+            version: '1.2.3',
+            dirty: false,
+            remote: {
+              name: 'upstream',
+              ahead: 3,
+              behind: 23,
+              url: {
+                fetch: 'https://github.com/probedock/probedock-node.git',
+                push: 'git@github.com:probedock/probedock.git'
+              }
+            }
+          }
+        end
+
+        let :expected_client_options do
+          {
+            publish: false,
+            local_mode: false,
+            print_payload: false,
+            save_payload: true,
+            workspace: '/tmp'
+          }
+        end
+
+        let :expected_servers do
+          [
+            {
+              name: 'a',
+              api_url: 'http://example.com/api',
+              api_token: 'secret3',
+              project_api_id: 'bcdefg'
+            },
+            {
+              name: 'b',
+              api_url: 'http://another-subdomain.example.com/api',
+              api_token: 'secret4'
+            }
+          ]
+        end
+
+        let :expected_selected_server, &->{ 'b' }
+
+        it_should_behave_like "a loaded configuration"
+
+        describe "with overrides in environment variables" do
+          let :probe_dock_env_vars do
+            {
+              publish: true,
+              print_payload: true,
+              save_payload: false,
+              workspace: '/tmp/environment',
+              server: 'a',
+              server_api_url: 'http://environment.com/api',
+              server_api_token: 'secret42',
+              server_project_api_id: 'defghi'
+            }
+          end
+
+          let :expected_project_updates do
+            {
+              version: '2.3.4',
+              api_id: 'defghi',
+              category: 'Another category',
+              tags: 'oneTag',
+              tickets: %w(t1 t2 t3)
+            }
+          end
+
+          let :expected_scm_updates do
+            {
+              name: 'custom',
+              version: '1.2.3',
+              dirty: false,
+              remote: {
+                name: 'upstream',
+                ahead: 3,
+                behind: 23,
+                url: {
+                  fetch: 'https://github.com/probedock/probedock-node.git',
+                  push: 'git@github.com:probedock/probedock.git'
+                }
+              }
+            }
+          end
+
+          let :expected_client_options do
+            {
+              publish: true,
+              local_mode: false,
+              print_payload: true,
+              save_payload: false,
+              workspace: '/tmp/environment'
+            }
+          end
+
+          let :expected_servers do
+            [
+              {
+                name: 'a',
+                api_url: 'http://environment.com/api',
+                api_token: 'secret42',
+                project_api_id: 'defghi'
+              },
+              {
+                name: 'b',
+                api_url: 'http://another-subdomain.example.com/api',
+                api_token: 'secret4'
+              }
+            ]
+          end
+
+          let :expected_selected_server, &->{ 'a' }
+
+          it_should_behave_like "a loaded configuration"
         end
       end
     end
@@ -398,6 +523,7 @@ publish: true
         its(:server){ should have_server_configuration(name: nil) }
         its(:publish?){ should be(true) }
         its(:load_warnings){ should have(1).items }
+
         it "should warn that no server name was given" do
           expect(subject).to have_elements_matching(:load_warnings, /no server name given/i)
           expect(loaded_config_capture.stdout).to be_empty
@@ -413,26 +539,18 @@ servers:
 publish: true
 server: unknown
         | }
+
         its(:server){ should have_server_configuration(name: nil) }
         its(:publish?){ should be(true) }
-        its(:load_warnings){ should be_empty }
+        its(:load_warnings){ should have(1).item }
+
+        it "should warn that no server was found with the specified name" do
+          expect(subject).to have_elements_matching(:load_warnings, /unknown server unknown/i)
+          expect(loaded_config_capture.stdout).to be_empty
+          expect(loaded_config_capture.stderr).to match(/Probe Dock - .*unknown server unknown.*/i)
+        end
       end
     end
-  end
-
-  def server_double options = {}
-    options ||= {}
-
-    double_options = %i(name api_url api_token project_api_id).inject({}){ |memo,k| memo[k] = options[k] ? options[k].to_s : nil; memo }
-
-    server = double double_options
-
-    %i(clear name= api_url= api_token= project_api_id=).each do |setter|
-      allow(server).to receive(setter)
-      nil
-    end
-
-    server
   end
 
   def attrs_hash source, *attrs

@@ -29,6 +29,10 @@ module ProbeDockProbe
       @project_api_id = nil
     end
 
+    def empty?
+      %i(name api_url api_token project_api_id).all?{ |attr| send(attr).nil? || send(attr).empty? }
+    end
+
     def upload payload
       validate!
 

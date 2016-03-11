@@ -23,6 +23,7 @@ SimpleCov.start
 require 'rspec'
 require 'rspec/its'
 require 'rspec/collection_matchers'
+require 'pp' # avoids conflict with fakefs: https://github.com/fakefs/fakefs/issues/99
 require 'fakefs/spec_helpers'
 
 Dir[File.join(File.dirname(__FILE__), 'support/**/*.rb')].each{ |f| require f }

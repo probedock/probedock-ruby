@@ -5,7 +5,7 @@ describe ProbeDockProbe::TestRun do
 
 	describe 'parsing' do
 		describe 'annotation without key keyword' do
-			subject{ Annotation.new('@probedock(abcde)') }
+			subject { Annotation.new('@probedock(abcde)') }
 			it 'should be possible' do
 				expect(subject.key).to eq('abcde')
 			end
@@ -20,42 +20,42 @@ describe ProbeDockProbe::TestRun do
 
 			describe describe_message do
 				describe 'key keyword' do
-					subject{ Annotation.new("@probedock(key=#{quote}abcde#{quote})") }
+					subject { Annotation.new("@probedock(key=#{quote}abcde#{quote})") }
 					it 'should be possible' do
 						expect(subject.key).to eq('abcde')
 					end
 				end
 
 				describe 'category keyword' do
-					subject{ Annotation.new("@probedock(category=#{quote}ruby#{quote})") }
+					subject { Annotation.new("@probedock(category=#{quote}ruby#{quote})") }
 					it 'should be possible' do
 						expect(subject.category).to eq('ruby')
 					end
 				end
 
 				describe 'only one tag keyword' do
-					subject{ Annotation.new("@probedock(tag=#{quote}tag1#{quote})") }
+					subject { Annotation.new("@probedock(tag=#{quote}tag1#{quote})") }
 					it 'should be possible' do
 						expect(subject.tags).to eq(['tag1'])
 					end
 				end
 
 				describe 'multiple tag keywords' do
-					subject{ Annotation.new("@probedock(tag=#{quote}tag1#{quote} tag=#{quote}tag2#{quote} tag=#{quote}tag3#{quote})") }
+					subject { Annotation.new("@probedock(tag=#{quote}tag1#{quote} tag=#{quote}tag2#{quote} tag=#{quote}tag3#{quote})") }
 					it 'should be possible' do
 						expect(subject.tags).to eq(%w[tag1 tag2 tag3])
 					end
 				end
 
 				describe 'only one ticket keyword' do
-					subject{ Annotation.new("@probedock(ticket=#{quote}ticket1#{quote})") }
+					subject { Annotation.new("@probedock(ticket=#{quote}ticket1#{quote})") }
 					it 'should be possible' do
 						expect(subject.tickets).to eq(['ticket1'])
 					end
 				end
 
 				describe 'multiple ticket keywords' do
-					subject{ Annotation.new("@probedock(ticket=#{quote}ticket1#{quote} ticket=#{quote}ticket2#{quote} ticket=#{quote}ticket3#{quote})") }
+					subject { Annotation.new("@probedock(ticket=#{quote}ticket1#{quote} ticket=#{quote}ticket2#{quote} ticket=#{quote}ticket3#{quote})") }
 					it 'should be possible' do
 						expect(subject.tickets).to eq(%w[ticket1 ticket2 ticket3])
 					end
@@ -80,28 +80,28 @@ describe ProbeDockProbe::TestRun do
 		%w[' "].each do |quote|
 			describe "annotation with spaces between quotes [#{quote}] and" do
 				describe 'key keyword' do
-					subject{ Annotation.new("@probedock(key=#{quote}ab cde#{quote})") }
+					subject { Annotation.new("@probedock(key=#{quote}ab cde#{quote})") }
 					it 'should be possible' do
 						expect(subject.key).to eq('ab cde')
 					end
 				end
 
 				describe 'category keyword' do
-					subject{ Annotation.new("@probedock(category=#{quote}ru by#{quote})") }
+					subject { Annotation.new("@probedock(category=#{quote}ru by#{quote})") }
 					it 'should be possible' do
 						expect(subject.category).to eq('ru by')
 					end
 				end
 
 				describe('tag keyword') do
-					subject{ Annotation.new("@probedock(tag=#{quote}ta g1#{quote})") }
+					subject { Annotation.new("@probedock(tag=#{quote}ta g1#{quote})") }
 					it 'should be possible' do
 						expect(subject.tags).to eq(['ta g1'])
 					end
 				end
 
 				describe('ticket keyword') do
-					subject{ Annotation.new("@probedock(ticket=#{quote}tick et1#{quote})") }
+					subject { Annotation.new("@probedock(ticket=#{quote}tick et1#{quote})") }
 					it 'should be possible' do
 						expect(subject.tickets).to eq(['tick et1'])
 					end

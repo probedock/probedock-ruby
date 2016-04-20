@@ -2,7 +2,7 @@ module ProbeDockProbe
 
 	ANNOTATION_REGEXP = /@probedock\(([^\(\)]*)\)/
 
-  class Annotation
+	class Annotation
 
 		attr_reader :key, :category, :tags, :tickets, :active
 
@@ -10,8 +10,8 @@ module ProbeDockProbe
 			parse(str)
 		end
 
+		private
 
-	private
 		def parse(str)
 
 			@key = nil
@@ -20,8 +20,8 @@ module ProbeDockProbe
 			@tickets = []
 			@active = true
 
-    	loop do
-      	match = str.match(ANNOTATION_REGEXP)
+			loop do
+				match = str.match(ANNOTATION_REGEXP)
 
 				if match
 					text = match[1]
@@ -35,8 +35,8 @@ module ProbeDockProbe
 						parseAnnotationList(text, 'ticket', @tickets)
 
 						active = text.match(/active=["']?(1|0|true|false|yes|no|t|f|y|n)["']?/i)
-      			if active
-        			@active = !active[1].match(/^(1|y|yes|t|true)$/i).nil?
+						if active
+							@active = !active[1].match(/^(1|y|yes|t|true)$/i).nil?
 						end
 					end
 
@@ -45,7 +45,7 @@ module ProbeDockProbe
 					break
 				end
 			end
-  	end
+		end
 
 		def keyword_regexp(keyword)
 			/#{keyword}=(?:(?<#{keyword}>[^"' ]+)|["']?(?<#{keyword}>[^"']+)["']?)/
@@ -59,12 +59,12 @@ module ProbeDockProbe
 		def parseAnnotationList(text, keyword, values)
 			regexp = keyword_regexp(keyword)
 
-	   	loop do
-	      match = text.match(regexp)
+			loop do
+				match = text.match(regexp)
 
 				if match
-	        values.push(match[keyword])
-	        text = text.sub(regexp, '')
+					values.push(match[keyword])
+					text = text.sub(regexp, '')
 				end
 
 				break unless match

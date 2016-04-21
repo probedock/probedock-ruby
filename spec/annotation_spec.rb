@@ -61,20 +61,6 @@ describe ProbeDockProbe::TestRun do
 					end
 				end
 
-				describe 'only one contributor keyword' do
-					subject { Annotation.new("@probedock(contributor=#{quote}contributor1#{quote})") }
-					it 'should be possible' do
-						expect(subject.contributors).to eq(['contributor1'])
-					end
-				end
-
-				describe 'multiple contributor keywords' do
-					subject { Annotation.new("@probedock(contributor=#{quote}contributor1#{quote} contributor=#{quote}contributor2#{quote} contributor=#{quote}contributor3#{quote})") }
-					it 'should be possible' do
-						expect(subject.contributors).to eq(%w[contributor1 contributor2 contributor3])
-					end
-				end
-
 				describe 'active keyword should be possible with' do
 					%w(1 yes true y t).each do |word|
 						it "[#{word}] truthy boolean" do
@@ -120,17 +106,10 @@ describe ProbeDockProbe::TestRun do
 						expect(subject.tickets).to eq(['tick et1'])
 					end
 				end
-
-				describe('contributor keyword') do
-					subject { Annotation.new("@probedock(contributor=#{quote}contri butor1#{quote})") }
-					it 'should be possible' do
-						expect(subject.contributors).to eq(['contri butor1'])
-					end
-				end
 			end
 		end
 
-		%w(ticket tag contributor).each do |keyword|
+		%w(ticket tag).each do |keyword|
 			describe "annotation with duplicated values for [#{keyword}]" do
 				subject { Annotation.new("@probedock(#{keyword}=val #{keyword}=val)") }
 				it 'should stored only once' do
@@ -148,7 +127,7 @@ describe ProbeDockProbe::TestRun do
 			end
 		end
 
-		%w(ticket tag contributor).each do |keyword|
+		%w(ticket tag).each do |keyword|
 			describe "values for #{keyword} keywords in annotations" do
 				subject { Annotation.new("@probedock(#{keyword}=firstValue) @probedock(#{keyword}=lastValue)")}
 				it 'should be combined' do

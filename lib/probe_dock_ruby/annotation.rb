@@ -4,7 +4,7 @@ module ProbeDockProbe
 	class Annotation
 		ANNOTATION_REGEXP = /@probedock\(([^\(\)]*)\)/
 
-		attr_reader :key, :category, :tags, :tickets, :contributors, :active
+		attr_reader :key, :category, :tags, :tickets, :active
 
 		def initialize(str)
 			parse(str)
@@ -38,7 +38,6 @@ module ProbeDockProbe
 						@category = parse_annotation_value(text, 'category')
 						parse_annotation_list(text, 'tag', @tags)
 						parse_annotation_list(text, 'ticket', @tickets)
-						parse_annotation_list(text, 'contributor', @contributors)
 
 						active = text.match(/active=["']?(1|0|true|false|yes|no|t|f|y|n)["']?/i)
 						if active

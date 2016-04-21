@@ -1,6 +1,6 @@
 module ProbeDockProbe
   class TestResult
-    attr_reader :key, :fingerprint, :name, :category, :active, :tags, :tickets, :contributors, :data, :duration, :message
+    attr_reader :key, :fingerprint, :name, :category, :active, :tags, :tickets, :data, :duration, :message
 
     def initialize project, options = {}
 
@@ -35,7 +35,6 @@ module ProbeDockProbe
       @category = @annotation.category || options[:category] || project.category
       @tags = (wrap(@annotation.tags) + wrap(options[:tags]) + wrap(project.tags)).compact.collect(&:to_s).uniq
       @tickets = (wrap(@annotation.tickets) + wrap(options[:tickets]) + wrap(project.tickets)).compact.collect(&:to_s).uniq
-      @contributors = (wrap(@annotation.contributors) + wrap(options[:contributors]) + wrap(project.contributors)).compact.collect(&:to_s).uniq
 
       @passed = !!options[:passed]
 
@@ -69,7 +68,6 @@ module ProbeDockProbe
         h[:v] = @active unless @active.nil?
         h[:g] = @tags
         h[:t] = @tickets
-        h[:o] = @contributors
         h[:a] = @data
       end
     end

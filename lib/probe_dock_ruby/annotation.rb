@@ -4,7 +4,7 @@ module ProbeDockProbe
 
 	class Annotation
 
-		attr_reader :key, :category, :tags, :tickets, :active
+		attr_reader :key, :category, :tags, :tickets, :contributors, :active
 
 		def initialize(str)
 			parse(str)
@@ -18,6 +18,7 @@ module ProbeDockProbe
 			@category = nil
 			@tags = []
 			@tickets = []
+			@contributors = []
 			@active = true
 
 			loop do
@@ -33,6 +34,7 @@ module ProbeDockProbe
 						@category = parseAnnotationValue(text, 'category')
 						parseAnnotationList(text, 'tag', @tags)
 						parseAnnotationList(text, 'ticket', @tickets)
+						parseAnnotationList(text, 'contributor', @contributors)
 
 						active = text.match(/active=["']?(1|0|true|false|yes|no|t|f|y|n)["']?/i)
 						if active

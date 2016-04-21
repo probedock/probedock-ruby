@@ -19,29 +19,39 @@ module ProbeDockProbe
       @name = options[:name].to_s
 
       if @name.match(Annotation::ANNOTATION_REGEXP)
-        @annotation = Annotation.new(@name)
+        name_annotation = Annotation.new(@name)
         @name = Annotation.strip_annotations(@name)
-      elsif options[:annotation]
-        if options[:annotation].kind_of?(String)
-          @annotation = Annotation.new(options[:annotation])
-        else
-          @annotation = options[:annotation]
-        end
-      else
-        @annotation = Annotation.new('')
       end
 
-      @key = @annotation.key || options[:key]
-      @category = @annotation.category || options[:category] || project.category
-      @tags = (wrap(@annotation.tags) + wrap(options[:tags]) + wrap(project.tags)).compact.collect(&:to_s).uniq
-      @tickets = (wrap(@annotation.tickets) + wrap(options[:tickets]) + wrap(project.tickets)).compact.collect(&:to_s).uniq
+      if options[:annotation]
+        if options[:annotation].kind_of?(String)
+          options_annotation = Annotation.new(options[:annotation])
+        else
+          options_annotation = options[:annotation]
+        end
+      end
+
+      if name_annotation && options_annotation
+        puts 'Merge annotations'
+        annotation = name_annotation.merge(options_annotation)
+      else
+        puts 'Choose between two annotations'
+        annotation = name_annotation || options_annotation
+      end
+
+      annotation = Annotation.new('') unless annotation
+
+      @key = options[:key] || annotation.key
+      @category = options[:category] || annotation.category || project.category
+      @tags = (wrap(annotation.tags) + wrap(options[:tags]) + wrap(project.tags)).compact.collect(&:to_s).uniq
+      @tickets = (wrap(annotation.tickets) + wrap(options[:tickets]) + wrap(project.tickets)).compact.collect(&:to_s).uniq
 
       @passed = !!options[:passed]
 
-      if !@annotation.active.nil?
-        @active = @annotation.active
-      elsif !options[:active].nil?
+      if !options[:active].nil?
         @active = options[:active]
+      elsif !annotation.active.nil?
+        @active = annotation.active
       end
 
       @duration = options[:duration]

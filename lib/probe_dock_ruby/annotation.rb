@@ -10,6 +10,15 @@ module ProbeDockProbe
 			parse(str)
 		end
 
+		def merge(annotation)
+			@key = annotation.key unless annotation.key
+			@category = annotation.category unless annotation.category
+			@active = annotation.active unless annotation.active.nil?
+			@tags = (wrap(@tags) + wrap(annotation.tags)).compact.collect(&:to_s).uniq
+			@tickets = (wrap(@tickets) + wrap(annotation.tickets)).compact.collect(&:to_s).uniq
+			self
+		end
+
 		def self.strip_annotations(test_name)
     	test_name.gsub(ANNOTATION_REGEXP, '')
 		end
@@ -22,7 +31,6 @@ module ProbeDockProbe
 			@category = nil
 			@tags = []
 			@tickets = []
-			@contributors = []
 			@active = nil
 
 			loop do

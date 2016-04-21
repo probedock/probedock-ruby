@@ -83,7 +83,7 @@ describe ProbeDockProbe::TestResult do
 
 	describe 'annotations' do
 		describe 'through the test name' do
-			let(:result_options) { super().merge(name: 'Something should work @probedock(key=1234 category=cat tag=at1 tag=at2 ticket=ati1 ticket=ati2 active=f)' )}
+			let(:result_options) { super().merge(key: nil, name: 'Something should work @probedock(key=1234 category=cat tag=at1 tag=at2 ticket=ati1 ticket=ati2 active=f)') }
       it 'should be possible' do
         expect(subject.key).to eq('1234')
 				expect(subject.category).to eq('cat')
@@ -94,7 +94,7 @@ describe ProbeDockProbe::TestResult do
 		end
 
 		describe 'through string annotation options' do
-			let(:result_options) { super().merge(annotation: '@probedock(key=1234 category=cat tag=at1 tag=at2 ticket=ati1 ticket=ati2 active=f)' )}
+			let(:result_options) { super().merge(key: nil, annotation: '@probedock(key=1234 category=cat tag=at1 tag=at2 ticket=ati1 ticket=ati2 active=f)' )}
       it 'should be possible' do
         expect(subject.key).to eq('1234')
 				expect(subject.category).to eq('cat')
@@ -105,7 +105,7 @@ describe ProbeDockProbe::TestResult do
 		end
 
 		describe 'through object annotation options' do
-			let(:result_options) { super().merge(annotation: Annotation.new('@probedock(key=1234 category=cat tag=at1 tag=at2 ticket=ati1 ticket=ati2 active=f)') )}
+			let(:result_options) { super().merge(key: nil, annotation: Annotation.new('@probedock(key=1234 category=cat tag=at1 tag=at2 ticket=ati1 ticket=ati2 active=f)') )}
 			it 'should be possible' do
 				expect(subject.key).to eq('1234')
 				expect(subject.category).to eq('cat')
@@ -113,6 +113,24 @@ describe ProbeDockProbe::TestResult do
 				expect(subject.tags).to eq(%w(at1 at2 a b))
 				expect(subject.tickets).to eq(%w(ati1 ati2 t1 t2))
 			end
+		end
+
+		describe 'through the test name and annotation' do
+			let(:result_options) { super().merge(
+				name: 'Something should work @probedock(key=akey category=acat tag=at1 tag=at2 ticket=ati1 ticket=ati2 active=f)',
+				key: 'hkey',
+				category: 'hcat',
+				active: true,
+				tags: %w(ht1 ht2),
+				tickets: %w(hti1 hti2)
+			)}
+      it 'should be possible with key, category and active from the options and the tag and tickets combined' do
+        expect(subject.key).to eq('hkey')
+				expect(subject.category).to eq('hcat')
+				expect(subject.active).to be_truthy
+				expect(subject.tags).to eq(%w(at1 at2 ht1 ht2 a b))
+				expect(subject.tickets).to eq(%w(ati1 ati2 hti1 hti2 t1 t2))
+      end
 		end
 	end
 

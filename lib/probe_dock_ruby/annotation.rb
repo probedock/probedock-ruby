@@ -1,13 +1,17 @@
 module ProbeDockProbe
 
-	ANNOTATION_REGEXP = /@probedock\(([^\(\)]*)\)/
 
 	class Annotation
+		ANNOTATION_REGEXP = /@probedock\(([^\(\)]*)\)/
 
 		attr_reader :key, :category, :tags, :tickets, :contributors, :active
 
 		def initialize(str)
 			parse(str)
+		end
+
+		def self.strip_annotations(test_name)
+    	test_name.gsub(ANNOTATION_REGEXP, '')
 		end
 
 		private
@@ -19,7 +23,7 @@ module ProbeDockProbe
 			@tags = []
 			@tickets = []
 			@contributors = []
-			@active = true
+			@active = nil
 
 			loop do
 				match = str.match(ANNOTATION_REGEXP)
@@ -30,11 +34,11 @@ module ProbeDockProbe
 					if text.match(/^[a-z0-9]+$/)
 						@key = text
 					else
-						@key = parseAnnotationValue(text, 'key')
-						@category = parseAnnotationValue(text, 'category')
-						parseAnnotationList(text, 'tag', @tags)
-						parseAnnotationList(text, 'ticket', @tickets)
-						parseAnnotationList(text, 'contributor', @contributors)
+						@key = parse_annotation_value(text, 'key')
+						@category = parse_annotation_value(text, 'category')
+						parse_annotation_list(text, 'tag', @tags)
+						parse_annotation_list(text, 'ticket', @tickets)
+						parse_annotation_list(text, 'contributor', @contributors)
 
 						active = text.match(/active=["']?(1|0|true|false|yes|no|t|f|y|n)["']?/i)
 						if active
@@ -42,7 +46,7 @@ module ProbeDockProbe
 						end
 					end
 
-					str = str.gsub(ANNOTATION_REGEXP, '')
+					str = str.sub(ANNOTATION_REGEXP, '')
 				else
 					break
 				end
@@ -53,19 +57,19 @@ module ProbeDockProbe
 			/#{keyword}=(?:(?<#{keyword}>[^"' ]+)|["']?(?<#{keyword}>[^"']+)["']?)/
 		end
 
-		def parseAnnotationValue(text, keyword)
+		def parse_annotation_value(text, keyword)
 			match = text.match(keyword_regexp(keyword))
 			match ? match[keyword] : nil
 		end
 
-		def parseAnnotationList(text, keyword, values)
+		def parse_annotation_list(text, keyword, values)
 			regexp = keyword_regexp(keyword)
 
 			loop do
 				match = text.match(regexp)
 
 				if match
-					values.push(match[keyword])
+					values.push(match[keyword]) unless values.include?(match[keyword])
 					text = text.sub(regexp, '')
 				end
 

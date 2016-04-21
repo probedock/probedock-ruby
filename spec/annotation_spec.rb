@@ -129,5 +129,32 @@ describe ProbeDockProbe::TestRun do
 				end
 			end
 		end
+
+		%w(ticket tag contributor).each do |keyword|
+			describe "annotation with duplicated values for [#{keyword}]" do
+				subject { Annotation.new("@probedock(#{keyword}=val #{keyword}=val)") }
+				it 'should stored only once' do
+					expect(subject.send("#{keyword}s")).to eq([ 'val' ])
+				end
+			end
+		end
+
+		%w(key category).each do |keyword|
+			describe "latest encountered value for a #{keyword} in annotations" do
+				subject { Annotation.new("@probedock(#{keyword}=firstValue) @probedock(#{keyword}=lastValue)")}
+				it 'should be kept' do
+					expect(subject.send(keyword)).to eq('lastValue')
+				end
+			end
+		end
+
+		%w(ticket tag contributor).each do |keyword|
+			describe "values for #{keyword} keywords in annotations" do
+				subject { Annotation.new("@probedock(#{keyword}=firstValue) @probedock(#{keyword}=lastValue)")}
+				it 'should be combined' do
+					expect(subject.send("#{keyword}s")).to eq( %w[firstValue lastValue])
+				end
+			end
+		end
 	end
 end

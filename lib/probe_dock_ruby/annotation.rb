@@ -14,8 +14,8 @@ module ProbeDockProbe
 			@key = annotation.key unless annotation.key
 			@category = annotation.category unless annotation.category
 			@active = annotation.active unless annotation.active.nil?
-			@tags = (wrap(@tags) + wrap(annotation.tags)).compact.collect(&:to_s).uniq
-			@tickets = (wrap(@tickets) + wrap(annotation.tickets)).compact.collect(&:to_s).uniq
+			@tags = (@tags + annotation.tags).compact.collect(&:to_s).uniq
+			@tickets = (@tickets + annotation.tickets).compact.collect(&:to_s).uniq
 			self
 		end
 

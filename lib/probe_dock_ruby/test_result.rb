@@ -32,10 +32,8 @@ module ProbeDockProbe
       end
 
       if name_annotation && options_annotation
-        puts 'Merge annotations'
         annotation = name_annotation.merge(options_annotation)
       else
-        puts 'Choose between two annotations'
         annotation = name_annotation || options_annotation
       end
 

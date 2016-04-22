@@ -11,8 +11,8 @@ module ProbeDockProbe
 		end
 
 		def merge(annotation)
-			@key = annotation.key unless annotation.key
-			@category = annotation.category unless annotation.category
+			@key = annotation.key if annotation.key
+			@category = annotation.category if annotation.category
 			@active = annotation.active unless annotation.active.nil?
 			@tags = (@tags + annotation.tags).compact.collect(&:to_s).uniq
 			@tickets = (@tickets + annotation.tickets).compact.collect(&:to_s).uniq

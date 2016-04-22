@@ -136,4 +136,32 @@ describe ProbeDockProbe::TestRun do
 			end
 		end
 	end
+
+	describe '#merge' do
+		describe 'left is replaced by right for key, category and active and combined for tags and tickets' do
+			let(:left){ Annotation.new('@probedock(key=lkey category=lcat active=true tag=lta ticket=lti)') }
+			let(:right){ Annotation.new('@probedock(key=rkey category=rcat active=false tag=rta ticket=rti)') }
+			subject{ left.merge(right) }
+			it {
+				expect(subject.key).to eq('rkey')
+				expect(subject.category).to eq('rcat')
+				expect(subject.active).to be_falsey
+				expect(subject.tags).to eq(%w(lta rta))
+				expect(subject.tickets).to eq(%w(lti rti))
+			}
+		end
+
+		describe 'left is not replaced by right for key, category and active and not combined for tags and tickets when values are nil' do
+			let(:left){ Annotation.new('@probedock(key=lkey category=lcat active=true tag=lta ticket=lti)') }
+			let(:right){ Annotation.new('@probedock()') }
+			subject{ left.merge(right) }
+			it {
+				expect(subject.key).to eq('lkey')
+				expect(subject.category).to eq('lcat')
+				expect(subject.active).to be_truthy
+				expect(subject.tags).to eq(%w(lta))
+				expect(subject.tickets).to eq(%w(lti))
+			}
+		end
+	end
 end

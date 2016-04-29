@@ -117,7 +117,8 @@ describe ProbeDockProbe::TestResult do
 
     describe 'through the test name and annotation' do
       let(:result_options) { super().merge(
-        name: 'Something should work @probedock(key=akey category=acat tag=at1 tag=at2 ticket=ati1 ticket=ati2 active=f)',
+        annotation: Annotation.new('@probedock(key=akey category=acat tag=at1 tag=at2 ticket=ati1 ticket=ati2 active=f)'),
+        name: 'Something should work @probedock(key=ankey category=ancat tag=ant1 tag=ant2 ticket=anti1 ticket=anti2 active=t)',
         key: 'hkey',
         category: 'hcat',
         active: true,
@@ -128,8 +129,8 @@ describe ProbeDockProbe::TestResult do
         expect(subject.key).to eq('hkey')
         expect(subject.category).to eq('hcat')
         expect(subject.active).to be_truthy
-        expect(subject.tags).to eq(%w(at1 at2 ht1 ht2 a b))
-        expect(subject.tickets).to eq(%w(ati1 ati2 hti1 hti2 t1 t2))
+        expect(subject.tags).to eq(%w(ant1 ant2 at1 at2 ht1 ht2 a b))
+        expect(subject.tickets).to eq(%w(anti1 anti2 ati1 ati2 hti1 hti2 t1 t2))
       end
     end
   end

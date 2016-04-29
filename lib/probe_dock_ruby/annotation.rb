@@ -1,6 +1,8 @@
 module ProbeDockProbe
   class Annotation
-    ANNOTATION_REGEXP = /@probedock\(([^\(\)]*)\)/
+    BASE_REGEXP_STRING = '@probedock\(([^\(\)]*)\)'
+    ANNOTATION_REGEXP = /#{BASE_REGEXP_STRING}/
+    STRIP_ANNOTATION_REGEXP = /\s*#{BASE_REGEXP_STRING}/
 
     attr_reader :key, :category, :tags, :tickets, :active
 
@@ -18,7 +20,7 @@ module ProbeDockProbe
     end
 
     def self.strip_annotations(test_name)
-      test_name.gsub(ANNOTATION_REGEXP, '')
+      test_name.gsub(STRIP_ANNOTATION_REGEXP, '')
     end
 
     private

@@ -164,4 +164,12 @@ describe ProbeDockProbe::TestRun do
       }
     end
   end
+
+  describe '.strip_annotations' do
+    it 'should strip annotations' do
+      expect(Annotation.strip_annotations('this is a name with one @probedock() annotation')).to eq('this is a name with one annotation')
+      expect(Annotation.strip_annotations('this is a name with a first @probedock() annotation and a second @probedock() annotation')).to eq('this is a name with a first annotation and a second annotation')
+      expect(Annotation.strip_annotations('this is a name without annotation')).to eq('this is a name without annotation')
+    end
+  end
 end

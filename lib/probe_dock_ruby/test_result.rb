@@ -18,26 +18,16 @@ module ProbeDockProbe
 
       @name = options[:name].to_s
 
+      annotation = Annotation.new('')
+
       if @name.match(Annotation::ANNOTATION_REGEXP)
-        name_annotation = Annotation.new(@name)
+        annotation = annotation.merge!(Annotation.new(@name))
         @name = Annotation.strip_annotations(@name)
       end
 
-      if options[:annotation]
-        if options[:annotation].kind_of?(String)
-          options_annotation = Annotation.new(options[:annotation])
-        else
-          options_annotation = options[:annotation]
-        end
-      end
-
-      if name_annotation && options_annotation
-        annotation = name_annotation.merge(options_annotation)
-      else
-        annotation = name_annotation || options_annotation
-      end
-
-      annotation = Annotation.new('') unless annotation
+      options_annotation = options[:annotation]
+      options_annotation = Annotation.new(options_annotation) if options_annotation.kind_of?(String)
+      annotation = annotation.merge!(options_annotation) if options_annotation
 
       @key = options[:key] || annotation.key
       @category = options[:category] || annotation.category || project.category
@@ -65,18 +55,18 @@ module ProbeDockProbe
 
     def to_h options = {}
       {
-        f: @fingerprint,
-        p: @passed,
-        d: @duration
+        'f' => @fingerprint,
+        'p' => @passed,
+        'd' => @duration
       }.tap do |h|
-        h[:k] = @key if @key
-        h[:m] = @message if @message
-        h[:n] = @name.length > 255 ? "#{@name[0, 252]}..." : @name
-        h[:c] = @category
-        h[:v] = @active unless @active.nil?
-        h[:g] = @tags
-        h[:t] = @tickets
-        h[:a] = @data
+        h['k'] = @key if @key
+        h['m'] = @message if @message
+        h['n'] = @name.length > 255 ? "#{@name[0, 252]}..." : @name
+        h['c'] = @category
+        h['v'] = @active unless @active.nil?
+        h['g'] = @tags
+        h['t'] = @tickets
+        h['a'] = @data
       end
     end
 

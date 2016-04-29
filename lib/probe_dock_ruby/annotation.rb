@@ -10,7 +10,7 @@ module ProbeDockProbe
       parse(str)
     end
 
-    def merge(annotation)
+    def merge!(annotation)
       @key = annotation.key if annotation.key
       @category = annotation.category if annotation.category
       @active = annotation.active unless annotation.active.nil?

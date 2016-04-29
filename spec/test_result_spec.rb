@@ -142,17 +142,17 @@ describe ProbeDockProbe::TestResult do
 
     let :expected_result do
       {
-        k: '123',
-        n: 'Something should work',
-        f: 'foo',
-        p: true,
-        d: 42,
-        m: 'Yeehaw!',
-        c: 'A category',
-        v: true,
-        g: %w(a b),
-        t: %w(t1 t2),
-        a: {}
+        'k' => '123',
+        'n' => 'Something should work',
+        'f' => 'foo',
+        'p' => true,
+        'd' => 42,
+        'm' => 'Yeehaw!',
+        'c' => 'A category',
+        'v' => true,
+        'g' => %w(a b),
+        't' => %w(t1 t2),
+        'a' => {}
       }
     end
 
@@ -165,7 +165,7 @@ describe ProbeDockProbe::TestResult do
       let(:result_options){ super().merge message: nil }
 
       it 'should reset them' do
-        expect(subject).to eq(expected_result.delete_if{ |k,v| k == :m }.merge({ c: nil, g: [], t: [] }))
+        expect(subject).to eq(expected_result.delete_if{ |k,v| k == 'm' }.merge({ 'c' => nil, 'g' => [], 't' => [] }))
       end
     end
 
@@ -173,7 +173,7 @@ describe ProbeDockProbe::TestResult do
       let(:result_options){ super().merge name: 'x ' * 130 }
 
       it 'should truncate the name' do
-        expect(subject).to eq(expected_result.merge(n: "#{'x ' * 126}..."))
+        expect(subject).to eq(expected_result.merge('n' => "#{'x ' * 126}..."))
       end
     end
   end

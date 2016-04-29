@@ -88,8 +88,8 @@ describe ProbeDockProbe::TestResult do
         expect(subject.key).to eq('1234')
         expect(subject.category).to eq('cat')
         expect(subject.active).to be_falsey
-        expect(subject.tags).to eq(%w(at1 at2 a b))
-        expect(subject.tickets).to eq(%w(ati1 ati2 t1 t2))
+        expect(subject.tags).to match_array(%w(at1 at2 a b))
+        expect(subject.tickets).to match_array(%w(ati1 ati2 t1 t2))
       end
     end
 
@@ -99,8 +99,8 @@ describe ProbeDockProbe::TestResult do
         expect(subject.key).to eq('1234')
         expect(subject.category).to eq('cat')
         expect(subject.active).to be_falsey
-        expect(subject.tags).to eq(%w(at1 at2 a b))
-        expect(subject.tickets).to eq(%w(ati1 ati2 t1 t2))
+        expect(subject.tags).to match_array(%w(at1 at2 a b))
+        expect(subject.tickets).to match_array(%w(ati1 ati2 t1 t2))
       end
     end
 
@@ -110,8 +110,8 @@ describe ProbeDockProbe::TestResult do
         expect(subject.key).to eq('1234')
         expect(subject.category).to eq('cat')
         expect(subject.active).to be_falsey
-        expect(subject.tags).to eq(%w(at1 at2 a b))
-        expect(subject.tickets).to eq(%w(ati1 ati2 t1 t2))
+        expect(subject.tags).to match_array(%w(at1 at2 a b))
+        expect(subject.tickets).to match_array(%w(ati1 ati2 t1 t2))
       end
     end
 
@@ -129,8 +129,8 @@ describe ProbeDockProbe::TestResult do
         expect(subject.key).to eq('hkey')
         expect(subject.category).to eq('hcat')
         expect(subject.active).to be_truthy
-        expect(subject.tags).to eq(%w(ant1 ant2 at1 at2 ht1 ht2 a b))
-        expect(subject.tickets).to eq(%w(anti1 anti2 ati1 ati2 hti1 hti2 t1 t2))
+        expect(subject.tags).to match_array(%w(ht1 ht2 ant1 ant2 at1 at2 a b))
+        expect(subject.tickets).to match_array(%w(hti1 hti2 anti1 anti2 ati1 ati2 t1 t2))
       end
     end
   end

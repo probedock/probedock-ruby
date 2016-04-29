@@ -31,8 +31,8 @@ module ProbeDockProbe
 
       @key = options[:key] || annotation.key
       @category = options[:category] || annotation.category || project.category
-      @tags = (wrap(annotation.tags) + wrap(options[:tags]) + wrap(project.tags)).compact.collect(&:to_s).uniq
-      @tickets = (wrap(annotation.tickets) + wrap(options[:tickets]) + wrap(project.tickets)).compact.collect(&:to_s).uniq
+      @tags = (wrap(options[:tags]) + wrap(annotation.tags) + wrap(project.tags)).compact.collect(&:to_s).uniq
+      @tickets = (wrap(options[:tickets]) + wrap(annotation.tickets) + wrap(project.tickets)).compact.collect(&:to_s).uniq
 
       @passed = !!options[:passed]
 

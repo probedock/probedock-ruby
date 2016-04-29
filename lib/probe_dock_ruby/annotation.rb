@@ -1,87 +1,84 @@
 module ProbeDockProbe
+  class Annotation
+    ANNOTATION_REGEXP = /@probedock\(([^\(\)]*)\)/
 
+    attr_reader :key, :category, :tags, :tickets, :active
 
-	class Annotation
-		ANNOTATION_REGEXP = /@probedock\(([^\(\)]*)\)/
+    def initialize(str)
+      parse(str)
+    end
 
-		attr_reader :key, :category, :tags, :tickets, :active
+    def merge(annotation)
+      @key = annotation.key if annotation.key
+      @category = annotation.category if annotation.category
+      @active = annotation.active unless annotation.active.nil?
+      @tags = (@tags + annotation.tags).compact.collect(&:to_s).uniq
+      @tickets = (@tickets + annotation.tickets).compact.collect(&:to_s).uniq
+      self
+    end
 
-		def initialize(str)
-			parse(str)
-		end
+    def self.strip_annotations(test_name)
+      test_name.gsub(ANNOTATION_REGEXP, '')
+    end
 
-		def merge(annotation)
-			@key = annotation.key if annotation.key
-			@category = annotation.category if annotation.category
-			@active = annotation.active unless annotation.active.nil?
-			@tags = (@tags + annotation.tags).compact.collect(&:to_s).uniq
-			@tickets = (@tickets + annotation.tickets).compact.collect(&:to_s).uniq
-			self
-		end
+    private
 
-		def self.strip_annotations(test_name)
-    	test_name.gsub(ANNOTATION_REGEXP, '')
-		end
+    def parse(str)
+      @key = nil
+      @category = nil
+      @tags = []
+      @tickets = []
+      @active = nil
 
-		private
+      loop do
+        match = str.match(ANNOTATION_REGEXP)
 
-		def parse(str)
+        if match
+          text = match[1]
 
-			@key = nil
-			@category = nil
-			@tags = []
-			@tickets = []
-			@active = nil
+          if text.match(/^[a-z0-9]+$/)
+            @key = text
+          else
+            @key = parse_annotation_value(text, 'key')
+            @category = parse_annotation_value(text, 'category')
+            parse_annotation_list(text, 'tag', @tags)
+            parse_annotation_list(text, 'ticket', @tickets)
 
-			loop do
-				match = str.match(ANNOTATION_REGEXP)
+            active = text.match(/active=["']?(1|0|true|false|yes|no|t|f|y|n)["']?/i)
+            if active
+              @active = !active[1].match(/^(1|y|yes|t|true)$/i).nil?
+            end
+          end
 
-				if match
-					text = match[1]
+          str = str.sub(ANNOTATION_REGEXP, '')
+        else
+          break
+        end
+      end
+    end
 
-					if text.match(/^[a-z0-9]+$/)
-						@key = text
-					else
-						@key = parse_annotation_value(text, 'key')
-						@category = parse_annotation_value(text, 'category')
-						parse_annotation_list(text, 'tag', @tags)
-						parse_annotation_list(text, 'ticket', @tickets)
+    def keyword_regexp(keyword)
+      /#{keyword}=(?:(?<#{keyword}>[^"' ]+)|["']?(?<#{keyword}>[^"']+)["']?)/
+    end
 
-						active = text.match(/active=["']?(1|0|true|false|yes|no|t|f|y|n)["']?/i)
-						if active
-							@active = !active[1].match(/^(1|y|yes|t|true)$/i).nil?
-						end
-					end
+    def parse_annotation_value(text, keyword)
+      match = text.match(keyword_regexp(keyword))
+      match ? match[keyword] : nil
+    end
 
-					str = str.sub(ANNOTATION_REGEXP, '')
-				else
-					break
-				end
-			end
-		end
+    def parse_annotation_list(text, keyword, values)
+      regexp = keyword_regexp(keyword)
 
-		def keyword_regexp(keyword)
-			/#{keyword}=(?:(?<#{keyword}>[^"' ]+)|["']?(?<#{keyword}>[^"']+)["']?)/
-		end
+      loop do
+        match = text.match(regexp)
 
-		def parse_annotation_value(text, keyword)
-			match = text.match(keyword_regexp(keyword))
-			match ? match[keyword] : nil
-		end
+        if match
+          values.push(match[keyword]) unless values.include?(match[keyword])
+          text = text.sub(regexp, '')
+        end
 
-		def parse_annotation_list(text, keyword, values)
-			regexp = keyword_regexp(keyword)
-
-			loop do
-				match = text.match(regexp)
-
-				if match
-					values.push(match[keyword]) unless values.include?(match[keyword])
-					text = text.sub(regexp, '')
-				end
-
-				break unless match
-			end
-		end
-	end
+        break unless match
+      end
+    end
+  end
 end

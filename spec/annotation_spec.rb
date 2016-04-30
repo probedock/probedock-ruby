@@ -1,6 +1,6 @@
 require 'helper'
 
-describe ProbeDockProbe::TestRun do
+describe ProbeDockProbe::Annotation do
   Annotation ||= ProbeDockProbe::Annotation
 
   describe 'parsing' do
@@ -11,7 +11,7 @@ describe ProbeDockProbe::TestRun do
       end
     end
 
-    %W[' " #{''}].each do |quote|
+    [ "'", "\"", '' ].each do |quote|
       describe_message = if quote.empty?
         'annotation without quote and'
       else
@@ -72,6 +72,43 @@ describe ProbeDockProbe::TestRun do
             it "[#{word}] falsey boolean" do
               expect(Annotation.new("@probedock(active=#{quote}#{word}#{quote})").active).to be_falsey
             end
+          end
+        end
+
+        describe 'one annotation with all the keywords' do
+          subject do
+            Annotation.new("@probedock(key=#{quote}k#{quote} category=#{quote}c#{quote} active=#{quote}f#{quote}
+              tag=#{quote}t1#{quote} tag=#{quote}t2#{quote} ticket=#{quote}ti1#{quote} ticket=#{quote}ti2#{quote})")
+          end
+
+          it 'should be possible' do
+            expect(subject.key).to eq('k')
+            expect(subject.category).to eq('c')
+            expect(subject.active).to be_falsey
+            expect(subject.tags).to match_array(%w[t1 t2])
+            expect(subject.tickets).to match_array(%w[ti1 ti2])
+          end
+        end
+
+        describe 'multiple annotations with all the keywords' do
+          subject do
+            Annotation.new("
+              test name with multiple annotations, and there is the first one:
+              @probedock(key=#{quote}k1#{quote} category=#{quote}c1#{quote} active=#{quote}f#{quote} tag=#{quote}t1#{quote}
+                tag=#{quote}t2#{quote} ticket=#{quote}ti1#{quote} ticket=#{quote}ti2#{quote}), and the second one
+              @probedock(key=#{quote}k2#{quote} category=#{quote}c2#{quote} active=#{quote}t#{quote} tag=#{quote}t2#{quote}
+                tag=#{quote}t3#{quote} ticket=#{quote}ti2#{quote} ticket=#{quote}ti3#{quote}), and the last one
+              @probedock(key=#{quote}k3#{quote} category=#{quote}c3#{quote} active=#{quote}f#{quote} tag=#{quote}t3#{quote}
+                tag=#{quote}t4#{quote} ticket=#{quote}ti3#{quote} ticket=#{quote}ti4#{quote}),
+            ")
+          end
+
+          it 'should be possible' do
+            expect(subject.key).to eq('k3')
+            expect(subject.category).to eq('c3')
+            expect(subject.active).to be_falsey
+            expect(subject.tags).to match_array(%w[t1 t2 t3 t4])
+            expect(subject.tickets).to match_array(%w[ti1 ti2 ti3 ti4])
           end
         end
       end
@@ -138,30 +175,28 @@ describe ProbeDockProbe::TestRun do
   end
 
   describe '#merge' do
-    describe 'left is replaced by right for key, category and active and combined for tags and tickets' do
-      let(:left){ Annotation.new('@probedock(key=lkey category=lcat active=true tag=lta ticket=lti)') }
-      let(:right){ Annotation.new('@probedock(key=rkey category=rcat active=false tag=rta ticket=rti)') }
-      subject{ left.merge!(right) }
-      it {
-        expect(subject.key).to eq('rkey')
-        expect(subject.category).to eq('rcat')
-        expect(subject.active).to be_falsey
-        expect(subject.tags).to eq(%w(lta rta))
-        expect(subject.tickets).to eq(%w(lti rti))
-      }
+    it 'should replace the key, category and active and combined for tags and tickets' do
+      left = Annotation.new('@probedock(key=lkey category=lcat active=true tag=lta ticket=lti)')
+      right = Annotation.new('@probedock(key=rkey category=rcat active=false tag=rta ticket=rti)')
+      left.merge!(right)
+
+      expect(left.key).to eq('rkey')
+      expect(left.category).to eq('rcat')
+      expect(left.active).to be_falsey
+      expect(left.tags).to eq(%w(lta rta))
+      expect(left.tickets).to eq(%w(lti rti))
     end
 
-    describe 'left is not replaced by right for key, category and active and not combined for tags and tickets when values are nil' do
-      let(:left){ Annotation.new('@probedock(key=lkey category=lcat active=true tag=lta ticket=lti)') }
-      let(:right){ Annotation.new('@probedock()') }
-      subject{ left.merge!(right) }
-      it {
-        expect(subject.key).to eq('lkey')
-        expect(subject.category).to eq('lcat')
-        expect(subject.active).to be_truthy
-        expect(subject.tags).to eq(%w(lta))
-        expect(subject.tickets).to eq(%w(lti))
-      }
+    it 'should not replace the key, category and active and not combined for tags and tickets when values are nil' do
+      left = Annotation.new('@probedock(key=lkey category=lcat active=true tag=lta ticket=lti)')
+      right = Annotation.new('@probedock()')
+      left.merge!(right)
+
+      expect(left.key).to eq('lkey')
+      expect(left.category).to eq('lcat')
+      expect(left.active).to be_truthy
+      expect(left.tags).to eq(%w(lta))
+      expect(left.tickets).to eq(%w(lti))
     end
   end
 

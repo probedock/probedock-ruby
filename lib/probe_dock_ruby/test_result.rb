@@ -21,13 +21,13 @@ module ProbeDockProbe
       annotation = Annotation.new('')
 
       if @name.match(Annotation::ANNOTATION_REGEXP)
-        annotation = annotation.merge!(Annotation.new(@name))
+        annotation.merge!(Annotation.new(@name))
         @name = Annotation.strip_annotations(@name)
       end
 
       options_annotation = options[:annotation]
       options_annotation = Annotation.new(options_annotation) if options_annotation.kind_of?(String)
-      annotation = annotation.merge!(options_annotation) if options_annotation
+      annotation.merge!(options_annotation) if options_annotation
 
       @key = options[:key] || annotation.key
       @category = options[:category] || annotation.category || project.category

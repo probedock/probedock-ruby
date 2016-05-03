@@ -60,7 +60,7 @@ module ProbeDockProbe
     end
 
     def keyword_regexp(keyword)
-      /#{keyword}=(?:(?<#{keyword}>[^"' (?:\n|\r\n)]+)|["']?(?<#{keyword}>[^"']+)["']?)/
+      /#{keyword}=(?:(?<#{keyword}>[^"'\s]+)|["']?(?<#{keyword}>[^"']+)["']?)/
     end
 
     def parse_annotation_value(text, keyword)

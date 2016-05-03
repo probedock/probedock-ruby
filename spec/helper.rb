@@ -18,7 +18,9 @@ SimpleCov.formatters = [
   SimpleCov::Formatter::HTMLFormatter
 ]
 
-SimpleCov.start
+SimpleCov.start do
+  add_filter 'spec/support'
+end
 
 require 'rspec'
 require 'rspec/its'

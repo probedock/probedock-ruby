@@ -1,6 +1,6 @@
 module ProbeDockProbe
   class TestResult
-    attr_reader :key, :fingerprint, :name, :category, :tags, :tickets, :data, :duration, :message
+    attr_reader :key, :fingerprint, :name, :category, :active, :tags, :tickets, :data, :duration, :message
 
     def initialize project, options = {}
 
@@ -14,15 +14,34 @@ module ProbeDockProbe
         raise Error, "The :duration options is required (indicates how long it took to run the test)"
       end
 
-      @key = options[:key]
       @fingerprint = options[:fingerprint]
+
       @name = options[:name].to_s
 
-      @category = options[:category] || project.category
-      @tags = (wrap(options[:tags]) + wrap(project.tags)).compact.collect(&:to_s).uniq
-      @tickets = (wrap(options[:tickets]) + wrap(project.tickets)).compact.collect(&:to_s).uniq
+      annotation = Annotation.new('')
+
+      if @name.match(Annotation::ANNOTATION_REGEXP)
+        annotation.merge!(Annotation.new(@name))
+        @name = Annotation.strip_annotations(@name)
+      end
+
+      options_annotation = options[:annotation]
+      options_annotation = Annotation.new(options_annotation) if options_annotation.kind_of?(String)
+      annotation.merge!(options_annotation) if options_annotation
+
+      @key = options[:key] || annotation.key
+      @category = options[:category] || annotation.category || project.category
+      @tags = (wrap(options[:tags]) + wrap(annotation.tags) + wrap(project.tags)).compact.collect(&:to_s).uniq
+      @tickets = (wrap(options[:tickets]) + wrap(annotation.tickets) + wrap(project.tickets)).compact.collect(&:to_s).uniq
 
       @passed = !!options[:passed]
+
+      if !options[:active].nil?
+        @active = options[:active]
+      elsif !annotation.active.nil?
+        @active = annotation.active
+      end
+
       @duration = options[:duration]
       @message = options[:message]
 
@@ -44,6 +63,7 @@ module ProbeDockProbe
         h['m'] = @message if @message
         h['n'] = @name.length > 255 ? "#{@name[0, 252]}..." : @name
         h['c'] = @category
+        h['v'] = @active unless @active.nil?
         h['g'] = @tags
         h['t'] = @tickets
         h['a'] = @data

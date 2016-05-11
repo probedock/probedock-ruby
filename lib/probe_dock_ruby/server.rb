@@ -2,9 +2,9 @@ require 'oj'
 require 'httparty'
 
 module ProbeDockProbe
-
   class Server
-    attr_accessor :name, :api_url, :api_token, :project_api_id
+    attr_reader :name
+    attr_accessor :api_url, :api_token, :project_api_id
 
     class Error < ProbeDockProbe::Error
       attr_reader :response

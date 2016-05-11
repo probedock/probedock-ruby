@@ -1,13 +1,16 @@
 module ProbeDockProbe
-
   class Project
-    attr_accessor :version, :api_id, :category, :tags, :tickets
+    attr_accessor :api_id, :version, :category, :tags, :tickets
 
     def initialize options = {}
       update({
         tags: [],
         tickets: []
       }.merge(options))
+    end
+
+    def empty?
+      %i(api_id version category tags tickets).all?{ |attr| send(attr).nil? || send(attr).respond_to?(:empty?) && send(attr).empty? }
     end
 
     def update options = {}

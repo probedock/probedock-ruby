@@ -1,7 +1,6 @@
 require 'securerandom'
 
 module ProbeDockProbe
-
   class UID
     ENVIRONMENT_VARIABLE = 'PROBEDOCK_TEST_REPORT_UID'
     OLD_ENVIRONMENT_VARIABLE = 'PROBE_DOCK_TEST_REPORT_UID'

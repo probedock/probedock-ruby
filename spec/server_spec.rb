@@ -17,10 +17,13 @@ describe ProbeDockProbe::Server do
     expect(options.keys.inject({}){ |memo,k| memo[k] = subject.send(k); memo }).to eq(options)
   end
 
-  it "should have setters" do
+  it "should not have a setter for the name" do
+    expect(subject).not_to respond_to(:name=)
+  end
+
+  it "should have setters for configurable attributes" do
 
     new_options = {
-      name: 'Another server',
       api_url: 'http://example.com/api2',
       api_token: api_token.reverse,
       project_api_id: '111111111111'

@@ -2,7 +2,6 @@ require 'fileutils'
 require 'rake/tasklib'
 
 module ProbeDockProbe
-
   class Tasks < ::Rake::TaskLib
 
     def initialize

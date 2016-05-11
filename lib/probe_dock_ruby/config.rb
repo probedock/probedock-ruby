@@ -2,8 +2,9 @@ require 'yaml'
 
 module ProbeDockProbe
   class Config
-    # TODO: add silent/verbose option(s)
     class Error < ProbeDockProbe::Error; end
+
+    # TODO: add silent/verbose option(s)
     attr_writer :publish, :local_mode, :print_payload, :save_payload
     attr_reader :project, :server, :scm, :workspace, :load_warnings
 
@@ -37,15 +38,31 @@ module ProbeDockProbe
       }.select{ |k,v| !v.nil? }
     end
 
-    def load!
+    # Clears all configuration and reloads it from configuration files and environment variables.
+    def load! &block
 
       initialize_servers
       @project.clear
       @scm.clear
       @load_warnings = []
 
-      config = merge_configs *[ home_config_file, working_config_file ].collect{ |f| load_config_file(f) }
-      config = merge_config config, parse_env(config)
+      file_configs = all_config_files.select{ |f| File.exists?(f) }.collect{ |f| load_config_file(f) }
+      config = merge_configs(*file_configs) || empty_config
+
+      env_config = load_env_config(config)
+      config = merge_config(config, env_config)
+
+      apply_configuration!(config, &block)
+
+      validate
+      @load_warnings.each{ |w| warn Paint["Probe Dock - #{w}", :yellow] }
+
+      self
+    end
+
+    private
+
+    def apply_configuration! config
 
       @publish = config.fetch(:publish, true)
       @server_name = config[:server]
@@ -58,35 +75,24 @@ module ProbeDockProbe
       build_servers! config
 
       project_options = config[:project]
-      project_options.merge! api_id: @server.project_api_id if @server and @server.project_api_id
-      @project.update project_options
+      if @server && @server.project_api_id
+        project_options.merge!(api_id: @server.project_api_id)
+      end
 
-      @scm.update config[:scm]
+      @project.update(project_options)
+
+      @scm.update(config[:scm])
 
       # TODO: test config block
       yield self if block_given?
-
-      check!
-      @load_warnings.each{ |w| warn Paint["Probe Dock - #{w}", :yellow] }
-
-      self
     end
-
-    private
 
     def initialize_servers
       @server = Server.new name: 'default'
       @servers = []
     end
 
-    def check!
-
-      configs = [ home_config_file, working_config_file ]
-      actual_configs = configs.select{ |f| File.exists? f }
-
-      if actual_configs.empty?
-        @load_warnings << %|No config file found, looking for:\n     #{configs.join "\n     "}|
-      end
+    def validate
 
       # If the selected server is not configured, it means that the configuration is incomplete somehow.
       if @server.empty?
@@ -105,9 +111,20 @@ module ProbeDockProbe
           @load_warnings << "Unknown server #{@server_name}"
         end
       end
+
+      # If neither the project nor the server are configured, and none of the expected
+      # configuration files exist, add a warning.
+      if @project.empty? && @server.empty?
+        config_files = all_config_files
+        actual_config_files = config_files.select{ |f| File.exists?(f) }
+
+        if actual_config_files.empty?
+          @load_warnings << %|No config file found, looking for:\n     #{config_files.join("\n     ")}|
+        end
+      end
     end
 
-    # Builds server objects from the loaded configuration.
+    # Builds server objects from the loaded configuration and selects the one that will be used.
     def build_servers! config
 
       server_options = config[:servers]
@@ -115,12 +132,14 @@ module ProbeDockProbe
         Server.new(server_options[name].merge(name: name))
       end
 
-      name = @server_name.to_s.strip
+      selected_server_name = @server_name.to_s.strip
 
+      # Remove the default server from the list if it is not configured and other servers are.
       default_server = @servers.find{ |server| server.name == 'default' }
       @servers.delete(default_server) if default_server && default_server.empty? && @servers.length >= 2
 
-      if @server_name && server = @servers.find{ |server| server.name == name }
+      # Select the server based on the specified server name, or use the default one.
+      if @server_name && server = @servers.find{ |server| server.name == selected_server_name }
         @server = server
       elsif !@server_name
         @server = default_server
@@ -128,11 +147,15 @@ module ProbeDockProbe
     end
 
     def home_config_file
-      File.join File.expand_path('~'), '.probedock', 'config.yml'
+      File.join(File.expand_path('~'), '.probedock', 'config.yml')
     end
 
     def working_config_file
-      File.expand_path parse_env_string(:config) || 'probedock.yml', Dir.pwd
+      File.expand_path(parse_env_string(:config) || 'probedock.yml', Dir.pwd)
+    end
+
+    def all_config_files
+      [ home_config_file, working_config_file ]
     end
 
     # Builds an empty standard configuration hash.
@@ -153,18 +176,16 @@ module ProbeDockProbe
     def load_config_file(file)
 
       config = {}
-      return config unless File.exists?(file)
-
       contents = YAML.load_file(file)
 
       # Parse boolean options.
       %i(local publish).each do |name|
-        config[name] = parse_boolean_option contents[name.to_s]
+        config[name] = parse_boolean_option(contents[name.to_s])
       end
 
       # Parse string options.
       %i(server workspace).each do |name|
-        config[name] = parse_string_option contents[name.to_s]
+        config[name] = parse_string_option(contents[name.to_s])
       end
 
       # Parse option hashes.
@@ -181,11 +202,11 @@ module ProbeDockProbe
         end
       end
 
-      config
+      config.reject{ |k,v| v.nil? }
     end
 
     # Builds a standard configuration hash from the supported `PROBEDOCK_*` environment variables.
-    def parse_env(previous_config)
+    def load_env_config(previous_config)
 
       env_options = {
         publish: parse_env_flag(:publish),
@@ -196,7 +217,10 @@ module ProbeDockProbe
           print: parse_env_flag(:print_payload),
           save: parse_env_flag(:save_payload)
         }.reject{ |k,v| v.nil? },
-        project: {},
+        project: {
+          api_id: parse_env_string(:project_api_id),
+          version: parse_env_string(:project_version)
+        }.reject{ |k,v| v.nil? },
         scm: {
           name: parse_env_string(:scm_name),
           version: parse_env_string(:scm_version),
@@ -395,7 +419,7 @@ module ProbeDockProbe
       result.reject{ |k,v| v.nil? }
     end
 
-    def parse_boolean_option(value, default = false)
+    def parse_boolean_option(value, default = nil)
       if value.nil?
         default
       elsif !!value == value

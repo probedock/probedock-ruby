@@ -1,7 +1,6 @@
 require 'paint'
 
 module ProbeDockProbe
-
   class Client
 
     def initialize server, options = {}

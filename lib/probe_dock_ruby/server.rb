@@ -30,7 +30,7 @@ module ProbeDockProbe
     end
 
     def empty?
-      %i(name api_url api_token project_api_id).all?{ |attr| send(attr).nil? || send(attr).empty? }
+      %i(api_url api_token project_api_id).all?{ |attr| send(attr).nil? || send(attr).empty? }
     end
 
     def upload payload

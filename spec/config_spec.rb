@@ -8,16 +8,16 @@ describe ProbeDockProbe::Config, fakefs: true do
   Project ||= ProbeDockProbe::Project
 
   let(:config){ described_class.new }
-  let(:probe_dock_env_vars){ {} }
+  let(:probedock_env_vars){ {} }
   subject{ config }
 
   before :each do
-    @probe_dock_env_vars = ENV.select{ |k,v| k.match /\APROBEDOCK_/ }.each_key{ |k| ENV.delete k }
-    probe_dock_env_vars.each_pair{ |k,v| ENV["PROBEDOCK_#{k.upcase}"] = v.to_s }
+    @probedock_env_vars = ENV.select{ |k,v| k.match /\APROBEDOCK_/ }.each_key{ |k| ENV.delete k }
+    probedock_env_vars.each_pair{ |k,v| ENV["PROBEDOCK_#{k.upcase}"] = v.to_s }
   end
 
   after :each do
-    @probe_dock_env_vars.each_pair{ |k,v| ENV[k] = v }
+    @probedock_env_vars.each_pair{ |k,v| ENV[k] = v }
   end
 
   describe "when created" do
@@ -39,7 +39,7 @@ describe ProbeDockProbe::Config, fakefs: true do
     its(:print_payload?){ should be(false) }
     its(:save_payload?){ should be(false) }
     its(:servers){ should be_empty }
-    its(:server){ should have_server_configuration(name: nil) }
+    its(:server){ should have_server_configuration(name: 'default') }
     its(:workspace){ should be_nil }
   end
 
@@ -51,20 +51,38 @@ describe ProbeDockProbe::Config, fakefs: true do
   describe "when loaded" do
     let(:home_config){ nil }
     let(:home_config_path){ File.expand_path('~/.probedock/config.yml') }
-    let(:working_config){ nil }
-    let(:working_config_path){ '/project/probedock.yml' }
+    let(:project_config){ nil }
+    let(:project_config_path){ '/project/probedock.yml' }
     let(:loaded_config_capture){ capture{ config.tap(&:load!) } }
     let(:loaded_config){ loaded_config_capture.result }
 
     before :each do
       FileUtils.mkdir_p '/project'
       FileUtils.mkdir_p File.dirname(home_config_path)
-      FileUtils.mkdir_p File.dirname(working_config_path)
+      FileUtils.mkdir_p File.dirname(project_config_path)
       File.open(home_config_path, 'w'){ |f| f.write home_config.strip } if home_config
-      File.open(working_config_path, 'w'){ |f| f.write working_config.strip } if working_config
+      File.open(project_config_path, 'w'){ |f| f.write project_config.strip } if project_config
       Dir.chdir '/project'
     end
 
+    # This shared examples group can be applied to check that a configuration
+    # was properly loaded without errors.
+    #
+    # Override the following `let` blocks to define the contents of configuration files and environment variables:
+    #
+    # * `home_config` - The home configuration file (~/.probedock/config.yml).
+    # * `project_config` - The project configuration file (probedock.yml in the working directory by default).
+    # * `probedock_env_vars` - Probe Dock environment variables in underscore format
+    #                           (e.g. `print_payload` automatically becomes PROBEDOCK_PRINT_PAYLOAD
+    #                            and its value is serialized as a string).
+    #
+    # It expects the following `let` blocks to be defined:
+    #
+    # * `expected_project_configuration`
+    # * `expected_scm_configuration`
+    # * `expected_client_options`
+    # * `expected_servers`
+    # * `expected_selected_server`
     shared_examples_for "a loaded configuration" do
       it "should have no load warnings" do
         expect(loaded_config.load_warnings).to be_empty
@@ -82,7 +100,7 @@ describe ProbeDockProbe::Config, fakefs: true do
 
         actual_project = %i(api_id version category tags tickets).inject({}){ |memo,attr| memo[attr] = project.send(attr); memo }.reject{ |k,v| v.nil? || (v.respond_to?(:empty?) && v.empty?) }
 
-        expect(actual_project).to eq(expected_project_configuration)
+        expect(normalize_project(actual_project)).to eq(normalize_project(expected_project_configuration))
       end
 
       it "should update the scm configuration" do
@@ -119,6 +137,8 @@ describe ProbeDockProbe::Config, fakefs: true do
       end
     end
 
+    # This test demonstrates that a minimal working configuration can be achieved
+    # using only the home configuration file.
     describe "with minimal information in the home config" do
       let :home_config do
 %|
@@ -173,8 +193,11 @@ server: a
       it_should_behave_like "a loaded configuration"
     end
 
-    describe "with minimal information in the working directory config and environment variables" do
-      let :working_config do
+    # This test demonstrates that a minimal working configuration can be achieved
+    # using only the project configuration file and environment variables.
+    # This is one way to support public continuous integration platforms like Travis CI.
+    describe "with minimal information in the project config and environment variables" do
+      let :project_config do
 %|
 project:
   version: 1.2.3
@@ -183,7 +206,7 @@ publish: true
 |
       end
 
-      let :probe_dock_env_vars do
+      let :probedock_env_vars do
         {
           publish: true,
           server_api_url: 'http://example.com/api',
@@ -219,6 +242,7 @@ publish: true
       let :expected_servers do
         [
           {
+            name: 'default',
             api_url: 'http://example.com/api',
             api_token: 'secret',
             project_api_id: 'abcdef'
@@ -231,6 +255,8 @@ publish: true
       it_should_behave_like "a loaded configuration"
     end
 
+    # This test demonstrates that all configuration properties can be set
+    # in the home configuration file.
     describe "with full information in the home config" do
       let :home_config do
 %|
@@ -326,8 +352,10 @@ scm:
 
       it_should_behave_like "a loaded configuration"
 
-      describe "with overrides in the working directory config" do
-        let :working_config do
+      # This test demonstrates that all configuration properties in the home
+      # configuration file can be overriden in the project configuration file.
+      describe "with overrides in the project config" do
+        let :project_config do
 %|
 servers:
   a:
@@ -366,7 +394,7 @@ scm:
             version: '2.3.4',
             api_id: 'cdefgh',
             category: 'Another category',
-            tags: %w(oneTag),
+            tags: %w(a b oneTag),
             tickets: %w(t1 t2 t3)
           }
         end
@@ -418,17 +446,29 @@ scm:
 
         it_should_behave_like "a loaded configuration"
 
+        # This test demonstrates that some configuration properties in the
+        # home and project configuration files can be overriden with environment
+        # variables.
         describe "with overrides in environment variables" do
-          let :probe_dock_env_vars do
+          let :probedock_env_vars do
             {
               publish: true,
+              local: true,
               print_payload: true,
               save_payload: false,
               workspace: '/tmp/environment',
               server: 'a',
               server_api_url: 'http://environment.com/api',
               server_api_token: 'secret42',
-              server_project_api_id: 'defghi'
+              server_project_api_id: 'defghi',
+              scm_name: 'mercurial',
+              scm_version: '2.3.4',
+              scm_dirty: true,
+              scm_remote_name: 'bitbucket',
+              scm_remote_ahead: 17,
+              scm_remote_behind: 0,
+              scm_remote_url_fetch: 'git@bitbucket.org:probedock/probedock.git',
+              scm_remote_url_push: 'https://user@bitbucket.org/probedock/probedock.git'
             }
           end
 
@@ -437,23 +477,23 @@ scm:
               version: '2.3.4',
               api_id: 'defghi',
               category: 'Another category',
-              tags: %w(oneTag),
+              tags: %w(a b oneTag),
               tickets: %w(t1 t2 t3)
             }
           end
 
           let :expected_scm_configuration do
             {
-              name: 'custom',
-              version: '1.2.3',
-              dirty: false,
+              name: 'mercurial',
+              version: '2.3.4',
+              dirty: true,
               remote: {
-                name: 'upstream',
-                ahead: 3,
-                behind: 23,
+                name: 'bitbucket',
+                ahead: 17,
+                behind: 0,
                 url: {
-                  fetch: 'https://github.com/probedock/probedock-node.git',
-                  push: 'git@github.com:probedock/probedock.git'
+                  fetch: 'git@bitbucket.org:probedock/probedock.git',
+                  push: 'https://user@bitbucket.org/probedock/probedock.git'
                 }
               }
             }
@@ -462,7 +502,7 @@ scm:
           let :expected_client_options do
             {
               publish: true,
-              local_mode: false,
+              local_mode: true,
               print_payload: true,
               save_payload: false,
               workspace: '/tmp/environment'
@@ -492,16 +532,267 @@ scm:
       end
     end
 
+    # This test demonstrates that all configuration properties can be set
+    # in the project configuration file.
+    describe "with full information in the project config" do
+      let :project_config do
+%|
+servers:
+  a:
+    apiUrl: "http://example.com/api"
+    apiToken: secret
+    projectApiId: bcdefg
+  b:
+    apiUrl: "http://subdomain.example.com/api"
+    apiToken: secret2
+project:
+  version: 1.2.3
+  apiId: abcdef
+  category: A category
+  tags: [ a, b ]
+  tickets: [ t1, t2, t3 ]
+publish: true
+local: true
+server: a
+workspace: /old
+payload:
+  print: true
+  save: false
+scm:
+  name: git
+  version: 2.7.2
+  dirty: true
+  remote:
+    name: origin
+    ahead: 4
+    behind: 2
+    url:
+      fetch: git@github.com:probedock/probedock-ruby.git
+      push: https://github.com/probedock/probedock.git
+|
+      end
+
+      let :expected_project_configuration do
+        {
+          version: '1.2.3',
+          api_id: 'bcdefg',
+          category: 'A category',
+          tags: %w(a b),
+          tickets: %w(t1 t2 t3)
+        }
+      end
+
+      let :expected_scm_configuration do
+        {
+          name: 'git',
+          version: '2.7.2',
+          dirty: true,
+          remote: {
+            name: 'origin',
+            ahead: 4,
+            behind: 2,
+            url: {
+              fetch: 'git@github.com:probedock/probedock-ruby.git',
+              push: 'https://github.com/probedock/probedock.git'
+            }
+          }
+        }
+      end
+
+      let :expected_client_options do
+        {
+          publish: true,
+          local_mode: true,
+          print_payload: true,
+          save_payload: false,
+          workspace: '/old'
+        }
+      end
+
+      let :expected_servers do
+        [
+          {
+            name: 'a',
+            api_url: 'http://example.com/api',
+            api_token: 'secret',
+            project_api_id: 'bcdefg'
+          },
+          {
+            name: 'b',
+            api_url: 'http://subdomain.example.com/api',
+            api_token: 'secret2'
+          }
+        ]
+      end
+
+      let :expected_selected_server, &->{ 'a' }
+
+      it_should_behave_like "a loaded configuration"
+
+      # This test demonstrates that some configuration properties in the
+      # project configuration file can be overriden with environment
+      # variables.
+      describe "with overrides in environment variables" do
+        let :probedock_env_vars do
+          {
+            publish: false,
+            print_payload: false,
+            save_payload: true,
+            workspace: '/tmp/environment',
+            server: 'b',
+            server_api_url: 'http://environment.com/api',
+            server_api_token: 'secret42',
+            server_project_api_id: 'defghi',
+            scm_name: 'mercurial',
+            scm_version: '2.3.4',
+            scm_dirty: true,
+            scm_remote_name: 'bitbucket',
+            scm_remote_ahead: 17,
+            scm_remote_behind: 0,
+            scm_remote_url_fetch: 'git@bitbucket.org:probedock/probedock.git',
+            scm_remote_url_push: 'https://user@bitbucket.org/probedock/probedock.git'
+          }
+        end
+
+        let :expected_project_configuration do
+          {
+            version: '1.2.3',
+            api_id: 'defghi',
+            category: 'A category',
+            tags: %w(a b),
+            tickets: %w(t1 t2 t3)
+          }
+        end
+
+        let :expected_scm_configuration do
+          {
+            name: 'mercurial',
+            version: '2.3.4',
+            dirty: true,
+            remote: {
+              name: 'bitbucket',
+              ahead: 17,
+              behind: 0,
+              url: {
+                fetch: 'git@bitbucket.org:probedock/probedock.git',
+                push: 'https://user@bitbucket.org/probedock/probedock.git'
+              }
+            }
+          }
+        end
+
+        let :expected_client_options do
+          {
+            publish: false,
+            local_mode: true,
+            print_payload: false,
+            save_payload: true,
+            workspace: '/tmp/environment'
+          }
+        end
+
+        let :expected_servers do
+          [
+            {
+              name: 'a',
+              api_url: 'http://example.com/api',
+              api_token: 'secret',
+              project_api_id: 'bcdefg'
+            },
+            {
+              name: 'b',
+              api_url: 'http://environment.com/api',
+              api_token: 'secret42',
+              project_api_id: 'defghi'
+            }
+          ]
+        end
+
+        let :expected_selected_server, &->{ 'b' }
+
+        it_should_behave_like "a loaded configuration"
+      end
+    end
+
+    # This test demonstrates that a different project configuration file can be loaded
+    # through the use of environment variables.
+    describe "with a custom project config" do
+      let :home_config do
+%|
+servers:
+  a:
+    apiUrl: "http://example.com/api"
+    apiToken: secret
+|
+      end
+
+      let :project_config_path, &->{ '/tmp/custom.yml' }
+      let :project_config do
+%|
+project:
+  version: 1.2.3
+  apiId: abcdef
+server: a
+publish: true
+|
+      end
+
+      let :probedock_env_vars do
+        {
+          config: '/tmp/custom.yml',
+          publish: false
+        }
+      end
+
+      let :expected_project_configuration do
+        {
+          version: '1.2.3',
+          api_id: 'abcdef'
+        }
+      end
+
+      let :expected_scm_configuration do
+        {
+          remote: {
+            url: {}
+          }
+        }
+      end
+
+      let :expected_client_options do
+        {
+          publish: false,
+          local_mode: false,
+          print_payload: false,
+          save_payload: false
+        }
+      end
+
+      let :expected_servers do
+        [
+          {
+            name: 'a',
+            api_url: 'http://example.com/api',
+            api_token: 'secret'
+          }
+        ]
+      end
+
+      let :expected_selected_server, &->{ 'a' }
+
+      it_should_behave_like "a loaded configuration"
+    end
+
     describe "load warnings" do
       subject{ loaded_config }
 
       describe "with no config files" do
-        its(:server){ should have_server_configuration(name: nil) }
+        its(:server){ should have_server_configuration(name: 'default') }
         its(:publish?){ should be(true) }
         its(:load_warnings){ should have(2).items }
 
         it "should warn that no config file was found and that no server was defined" do
-          expect(subject).to have_elements_matching(:load_warnings, /no config file found/i, home_config_path, working_config_path, /no server defined/i)
+          expect(subject).to have_elements_matching(:load_warnings, /no config file found/i, home_config_path, project_config_path, /no server defined/i)
           expect(loaded_config_capture.stdout).to be_empty
           expect(loaded_config_capture.stderr).to match(/Probe Dock - .*no config file found.*/i)
           expect(loaded_config_capture.stderr).to match(/Probe Dock - .*no server defined.*/i)
@@ -509,8 +800,8 @@ scm:
       end
 
       describe "with no server" do
-        let(:working_config){ "publish: true" }
-        its(:server){ should have_server_configuration(name: nil) }
+        let(:project_config){ "publish: true" }
+        its(:server){ should have_server_configuration(name: 'default') }
         its(:publish?){ should be(true) }
         its(:load_warnings){ should have(1).items }
 
@@ -522,13 +813,13 @@ scm:
       end
 
       describe "with no server selected" do
-        let(:working_config){ %|
+        let(:project_config){ %|
 servers:
   a:
     apiUrl: http://example.com/api
 publish: true
         | }
-        its(:server){ should have_server_configuration(name: nil) }
+        its(:server){ should have_server_configuration(name: 'default') }
         its(:publish?){ should be(true) }
         its(:load_warnings){ should have(1).items }
 
@@ -540,7 +831,7 @@ publish: true
       end
 
       describe "with an unknown server selected" do
-        let(:working_config){ %|
+        let(:project_config){ %|
 servers:
   a:
     apiUrl: http://example.com/api
@@ -548,7 +839,7 @@ publish: true
 server: unknown
         | }
 
-        its(:server){ should have_server_configuration(name: nil) }
+        its(:server){ should have_server_configuration(name: 'default') }
         its(:publish?){ should be(true) }
         its(:load_warnings){ should have(1).item }
 
@@ -561,7 +852,7 @@ server: unknown
     end
   end
 
-  def attrs_hash source, *attrs
-    attrs.inject({}){ |memo,a| memo[a.to_sym] = source.send(a); memo }
+  def normalize_project project
+    %i(tags tickets).each{ |attr| project[attr] = project[attr].sort if project[attr] }
   end
 end

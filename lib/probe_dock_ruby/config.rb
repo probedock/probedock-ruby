@@ -8,8 +8,7 @@ module ProbeDockProbe
     attr_reader :project, :server, :scm, :workspace, :load_warnings
 
     def initialize
-      @servers = []
-      @server = Server.new
+      initialize_servers
       @project = Project.new
       @scm = Scm.new
       @publish, @local_mode, @print_payload, @save_payload = false, false, false, false
@@ -40,21 +39,21 @@ module ProbeDockProbe
 
     def load!
 
+      initialize_servers
       @project.clear
       @scm.clear
-      @server.clear
-      @servers.clear
-
       @load_warnings = []
-      config = load_config_files
 
-      @publish = parse_env_flag :publish, config.fetch(:publish, true)
-      @server_name = parse_env_option(:server) || config[:server]
-      @local_mode = parse_env_flag(:local) || !!config[:local]
+      config = merge_configs *[ home_config_file, working_config_file ].collect{ |f| load_config_file(f) }
+      config = merge_config config, parse_env(config)
 
-      self.workspace = parse_env_option(:workspace) || config[:workspace]
-      @print_payload = parse_env_flag :print_payload, !!config[:payload][:print]
-      @save_payload = parse_env_flag :save_payload, !!config[:payload][:save]
+      @publish = config.fetch(:publish, true)
+      @server_name = config[:server]
+      @local_mode = !!config[:local]
+
+      self.workspace = config[:workspace]
+      @print_payload = !!config[:payload][:print]
+      @save_payload = !!config[:payload][:save]
 
       build_servers! config
 
@@ -62,10 +61,9 @@ module ProbeDockProbe
       project_options.merge! api_id: @server.project_api_id if @server and @server.project_api_id
       @project.update project_options
 
-      scm_options = config[:scm]
-      add_scm_env_options! scm_options
-      @scm.update scm_options
+      @scm.update config[:scm]
 
+      # TODO: test config block
       yield self if block_given?
 
       check!
@@ -76,6 +74,11 @@ module ProbeDockProbe
 
     private
 
+    def initialize_servers
+      @server = Server.new name: 'default'
+      @servers = []
+    end
+
     def check!
 
       configs = [ home_config_file, working_config_file ]
@@ -85,70 +88,42 @@ module ProbeDockProbe
         @load_warnings << %|No config file found, looking for:\n     #{configs.join "\n     "}|
       end
 
-      if @servers.length == 1 && @server.empty?
-        @load_warnings << "No server defined"
-      elsif @server.empty? && !@server_name
-        @load_warnings << "No server name given"
-      elsif @server.empty? && @server_name
-        @load_warnings << "Unknown server #{@server_name}"
+      # If the selected server is not configured, it means that the configuration is incomplete somehow.
+      if @server.empty?
+        if @servers == [ @server ]
+          # If the list of servers contains only the default, non-configured server, it means
+          # that no server was defined in any of the configuration files, and that none of the
+          # server environment variables were given.
+          @load_warnings << "No server defined"
+        elsif !@server_name
+          # Otherwise, if there are configured servers in the list but none are selected, it
+          # means that no server name was given.
+          @load_warnings << "No server name given"
+        elsif !@servers.collect(&:name).include?(@server_name)
+          # Otherwise, if a server name was given, it means that it does not match any of the
+          # configured servers.
+          @load_warnings << "Unknown server #{@server_name}"
+        end
       end
     end
 
+    # Builds server objects from the loaded configuration.
     def build_servers! config
 
-      default_server_options = { project_api_id: config[:project][:api_id] }
-      server_options = config[:servers].inject({}) do |memo,(name, options)|
-        memo[name] = {}.merge(options).merge(name: name)
-        memo
+      server_options = config[:servers]
+      @servers = server_options.keys.collect do |name|
+        Server.new(server_options[name].merge(name: name))
       end
 
       name = @server_name.to_s.strip
 
-      @servers = server_options.values.collect do |options|
-        Server.new options
-      end
+      default_server = @servers.find{ |server| server.name == 'default' }
+      @servers.delete(default_server) if default_server && default_server.empty? && @servers.length >= 2
 
       if @server_name && server = @servers.find{ |server| server.name == name }
         @server = server
-      else
-        @servers << @server
-      end
-
-      if @server
-        {
-          api_url: parse_env_option(:server_api_url),
-          api_token: parse_env_option(:server_api_token),
-          project_api_id: parse_env_option(:server_project_api_id)
-        }.reject{ |k,v| v.nil? }.each do |k,v|
-          @server.send("#{k}=", v)
-        end
-      end
-    end
-
-    def load_config_files
-
-      configs = [ home_config_file, working_config_file ]
-      actual_configs = configs.select{ |f| File.exists? f }
-      return { servers: [], payload: {}, project: {}, scm: { remote: { url: {} } } } if actual_configs.empty?
-
-      actual_configs.collect!{ |f| YAML.load_file f }
-
-      actual_configs.inject({ servers: {} }) do |memo,yml|
-        memo.merge! parse_general_options(yml)
-
-        if yml['servers'].kind_of? Hash
-          yml['servers'].each_pair do |k,v|
-            if v.kind_of? Hash
-              memo[:servers][k] = (memo[:servers][k] || {}).merge(parse_server_options(v))
-            end
-          end
-        end
-
-        memo[:payload] = (memo[:payload] || {}).merge parse_payload_options(yml['payload'])
-        memo[:project] = (memo[:project] || {}).merge parse_project_options(yml['project'])
-        memo[:scm] = (memo[:scm] || {}).merge(parse_scm_options(yml['scm']))
-
-        memo
+      elsif !@server_name
+        @server = default_server
       end
     end
 
@@ -157,10 +132,170 @@ module ProbeDockProbe
     end
 
     def working_config_file
-      File.expand_path parse_env_option(:config) || 'probedock.yml', Dir.pwd
+      File.expand_path parse_env_string(:config) || 'probedock.yml', Dir.pwd
     end
 
-    def parse_env_option name
+    # Builds an empty standard configuration hash.
+    def empty_config
+      {
+        payload: {},
+        project: {},
+        scm: {
+          remote: {
+            url: {}
+          }
+        },
+        servers: {}
+      }
+    end
+
+    # Builds a standard configuration hash from a YAML configuration file.
+    def load_config_file(file)
+
+      config = {}
+      return config unless File.exists?(file)
+
+      contents = YAML.load_file(file)
+
+      # Parse boolean options.
+      %i(local publish).each do |name|
+        config[name] = parse_boolean_option contents[name.to_s]
+      end
+
+      # Parse string options.
+      %i(server workspace).each do |name|
+        config[name] = parse_string_option contents[name.to_s]
+      end
+
+      # Parse option hashes.
+      %i(payload project scm).each do |name|
+        config[name] = send("parse_#{name}_options", contents[name.to_s])
+      end
+
+      # Parse the servers hash.
+      config[:servers] = {}
+      if contents['servers'].kind_of?(Hash)
+        config[:servers] = contents['servers'].inject({}) do |memo,(name,options)|
+          memo[name] = parse_server_options(options)
+          memo
+        end
+      end
+
+      config
+    end
+
+    # Builds a standard configuration hash from the supported `PROBEDOCK_*` environment variables.
+    def parse_env(previous_config)
+
+      env_options = {
+        publish: parse_env_flag(:publish),
+        server: parse_env_string(:server),
+        local: parse_env_flag(:local),
+        workspace: parse_env_string(:workspace),
+        payload: {
+          print: parse_env_flag(:print_payload),
+          save: parse_env_flag(:save_payload)
+        }.reject{ |k,v| v.nil? },
+        project: {},
+        scm: {
+          name: parse_env_string(:scm_name),
+          version: parse_env_string(:scm_version),
+          dirty: parse_env_flag(:scm_dirty),
+          remote: {
+            name: parse_env_string(:scm_remote_name),
+            ahead: parse_env_integer(:scm_remote_ahead),
+            behind: parse_env_integer(:scm_remote_behind),
+            url: {
+              fetch: parse_env_string(:scm_remote_url_fetch),
+              push: parse_env_string(:scm_remote_url_push)
+            }.reject{ |k,v| v.nil? }
+          }.reject{ |k,v| v.nil? }
+        }.reject{ |k,v| v.nil? },
+        servers: {}
+      }.reject{ |k,v| v.nil? }
+
+      # Determine the selected server name based on environment variables
+      # and previously parsed configuration files.
+      server_name = if env_options.key?(:server)
+        # If the PROBEDOCK_SERVER option was given, then that server name is selected.
+        env_options[:server]
+      elsif previous_config[:server] && previous_config[:servers].key?(previous_config[:server])
+        # Otherwise if a server name was already selected in the configuration files,
+        # then that server name is selected.
+        previous_config[:server]
+      else
+        # Otherwise, the server name "default" is selected.
+        'default'
+      end
+
+      # The PROBEDOCK_SERVER_* environment variables can be used to configure
+      # a server from scratch (with no need for configuration files).
+      #
+      # They can also be used to override the selected server (see previous code block).
+      if server_name
+        env_options[:servers] = {
+          server_name => {
+            api_url: parse_env_string(:server_api_url),
+            api_token: parse_env_string(:server_api_token),
+            project_api_id: parse_env_string(:server_project_api_id)
+          }.reject{ |k,v| v.nil? }
+        }
+      end
+
+      env_options
+    end
+
+    # Deep-merges all the configuration hashes given as arguments,
+    # in order of increasing precedence (e.g. the last configuration will
+    # override all previous ones).
+    def merge_configs(*configs)
+      configs.inject do |memo,config|
+        merge_config(memo, config)
+      end
+    end
+
+    # Deep-merges the two specified configuration hashes, with properties
+    # in the second one overriding the first.
+    #
+    # This method expects the configuration hashes to have the standard format:
+    #
+    #     {
+    #       payload: {},
+    #       project: {},
+    #       scm: {
+    #         remote: {
+    #           url: {}
+    #         }
+    #       },
+    #       servers: {}
+    #     }
+    #
+    # It is the responsibility of the caller to supply configuration hashes
+    # in this format.
+    def merge_config(config, config_override)
+
+      # Iterate over both configurations' keys.
+      (config.keys + config_override.keys).uniq.inject({}) do |memo,key|
+
+        memo[key] = if config[key].kind_of?(Hash) || config_override[key].kind_of?(Hash)
+          # If the current values are hashes, recursively merge them.
+          merge_config(config[key] || {}, config_override[key] || {})
+        elsif config[key].kind_of?(Array) || config_override[key].kind_of?(Array)
+          # If the current values are arrays, return the duplicate-free union of the two.
+          # WARNING: recursive merging is not currently supported for arrays. Arrays are
+          # expected to contain primitives only (e.g. tags).
+          ((config[key] || []) + (config_override[key] || [])).uniq
+        else
+          # If the current values are primitives, take the second configuration's
+          # value if present, otherwise the first's.
+          config_override.fetch(key, config[key])
+        end
+
+        memo
+      end
+    end
+
+    def parse_env_option(name)
 
       var = "PROBEDOCK_#{name.to_s.upcase}"
       return ENV[var] if ENV.key? var
@@ -169,64 +304,129 @@ module ProbeDockProbe
       ENV.key?(old_var) ? ENV[old_var] : nil
     end
 
-    def parse_env_flag name, default = false
+    def parse_env_flag(name, default = nil)
       val = parse_env_option name
       val ? !!val.to_s.strip.match(/\A(1|y|yes|t|true)\Z/i) : default
     end
 
-    def parse_env_integer name, default = nil
+    def parse_env_integer(name, default = nil)
       val = parse_env_option name
       val ? val.to_i : default
     end
 
-    def parse_general_options h
-      parse_options h, %w(publish server local workspace)
+    def parse_env_string(name, default = nil)
+      val = parse_env_option name
+      val ? val.to_s : default
     end
 
-    def parse_server_options h
-      parse_options h, %w(name apiUrl apiToken projectApiId)
+    def parse_general_options(h)
+      parse_typed_options(h, {
+        publish: :boolean,
+        server: :string,
+        local: :boolean,
+        workspace: :string
+      })
     end
 
-    def parse_payload_options h
-      parse_options h, %w(save print)
+    def parse_server_options(h)
+      parse_typed_options(h, {
+        name: :string,
+        apiUrl: :string,
+        apiToken: :string,
+        projectApiId: :string
+      })
     end
 
-    def parse_project_options h
-      parse_options h, %w(version apiId category tags tickets)
+    def parse_payload_options(h)
+      parse_typed_options(h, {
+        save: :boolean,
+        print: :boolean
+      })
     end
 
-    def parse_scm_options h
-      parse_options(h, %w(name version dirty)).tap do |options|
-        scm_h = h.kind_of?(Hash) ? h : {}
-        options[:remote] = parse_options(scm_h['remote'], %w(name url ahead behind)).tap do |remote_options|
-          remote_h = scm_h['remote'].kind_of?(Hash) ? scm_h['remote'] : {}
-          remote_options[:url] = parse_options(remote_h['url'], %w(fetch push))
+    def parse_project_options(h)
+      parse_typed_options(h, {
+        version: :string,
+        apiId: :string,
+        category: :string,
+        tags: :string_array,
+        tickets: :string_array
+      })
+    end
+
+    def parse_scm_options(h)
+      scm_options = parse_typed_options(h, {
+        name: :string,
+        version: :string,
+        dirty: :boolean
+      })
+
+      scm_remote = h.kind_of?(Hash) ? h['remote'] : {}
+      scm_options[:remote] = parse_typed_options(scm_remote, {
+        name: :string,
+        ahead: :integer,
+        behind: :integer
+      })
+
+      scm_remote_url = scm_remote.kind_of?(Hash) ? scm_remote['url'] : {}
+      scm_options[:remote][:url] = parse_typed_options(scm_remote_url, {
+        fetch: :string,
+        push: :string
+      })
+
+      scm_options
+    end
+
+    def parse_typed_options(h, parse)
+      return {} unless h.kind_of?(Hash)
+
+      result = parse.inject({}) do |memo,(key,config)|
+        if h.key?(key.to_s)
+          memo[key.to_s.gsub(/(.)([A-Z])/, '\1_\2').downcase.to_sym] = if %i(boolean integer string string_array).include?(config)
+            send("parse_#{config}_option", h[key.to_s])
+          else
+            raise "Unsupported option type #{config.inspect}"
+          end
         end
+
+        memo
+      end
+
+      result.reject{ |k,v| v.nil? }
+    end
+
+    def parse_boolean_option(value, default = false)
+      if value.nil?
+        default
+      elsif !!value == value
+        value
+      else
+        !!value.to_s.match(/^(1|y|yes|t|true)$/i)
       end
     end
 
-    def add_scm_env_options! options
-      options.merge!({
-        name: parse_env_option(:scm_name),
-        version: parse_env_option(:scm_version),
-        dirty: parse_env_flag(:scm_dirty, nil),
-      }.reject{ |k,v| v.nil? })
-
-      options[:remote].merge!({
-        name: parse_env_option(:scm_remote_name),
-        ahead: parse_env_integer(:scm_remote_ahead),
-        behind: parse_env_integer(:scm_remote_behind)
-      }.reject{ |k,v| v.nil? })
-
-      options[:remote][:url].merge!({
-        fetch: parse_env_option(:scm_remote_url_fetch),
-        push: parse_env_option(:scm_remote_url_push)
-      }.reject{ |k,v| v.nil? })
+    def parse_string_array_option(value, default = [])
+      if value.nil?
+        default
+      elsif value.kind_of?(Array)
+        value.collect(&:to_s)
+      else
+        [ value.to_s ]
+      end
     end
 
-    def parse_options h, keys
-      return {} unless h.kind_of? Hash
-      keys.inject({}){ |memo,k| memo[k.gsub(/(.)([A-Z])/, '\1_\2').downcase.to_sym] = h[k] if h.key?(k); memo }
+    def parse_string_option(value, default = nil)
+      value.nil? ? default : (value.kind_of?(String) ? value : value.to_s)
+    end
+
+    def parse_integer_option(value, default = nil)
+      if value.nil?
+        default
+      elsif value.kind_of?(Integer)
+        value
+      else
+        value.to_s.to_i
+      end
     end
   end
 end

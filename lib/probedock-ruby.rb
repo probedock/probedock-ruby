@@ -1,1 +1,1 @@
-require 'probe_dock_ruby'
+require 'probedock_ruby'

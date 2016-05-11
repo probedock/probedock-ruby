@@ -2,6 +2,7 @@ require 'helper'
 
 describe ProbeDockProbe::Server do
   let(:api_token){ 'abcdefghijklmnopqrstuvwxyz' }
+
   let :options do
     {
       name: 'A server',
@@ -10,7 +11,9 @@ describe ProbeDockProbe::Server do
       project_api_id: '0000000000'
     }
   end
+
   let(:server){ ProbeDockProbe::Server.new options }
+
   subject{ server }
 
   it "should set its attributes" do
@@ -36,7 +39,8 @@ describe ProbeDockProbe::Server do
   describe "#clear" do
     it "should clear the configuration" do
       server.clear
-      options.keys.each{ |k| expect(subject.send(k)).to be_nil }
+      expect(server.name).to eq(options[:name])
+      (options.keys - %i(name)).each{ |k| expect(subject.send(k)).to be_nil }
     end
   end
 

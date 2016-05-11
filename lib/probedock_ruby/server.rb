@@ -1,10 +1,10 @@
 require 'oj'
 require 'httparty'
+require File.join(File.dirname(__FILE__), 'configurable.rb')
 
 module ProbeDockProbe
   class Server
-    attr_reader :name
-    attr_accessor :api_url, :api_token, :project_api_id
+    include Configurable
 
     class Error < ProbeDockProbe::Error
       attr_reader :response
@@ -15,22 +15,17 @@ module ProbeDockProbe
       end
     end
 
+    configurable({
+      api_url: :string,
+      api_token: :string,
+      project_api_id: :string
+    })
+
+    attr_reader :name
+
     def initialize options = {}
+      super options
       @name = options[:name].to_s.strip if options[:name]
-      @api_url = options[:api_url].to_s if options[:api_url]
-      @api_token = options[:api_token].to_s if options[:api_token]
-      @project_api_id = options[:project_api_id].to_s if options[:project_api_id]
-    end
-
-    def clear
-      @name = nil
-      @api_url = nil
-      @api_token = nil
-      @project_api_id = nil
-    end
-
-    def empty?
-      %i(api_url api_token project_api_id).all?{ |attr| send(attr).nil? || send(attr).empty? }
     end
 
     def upload payload

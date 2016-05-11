@@ -114,8 +114,8 @@ describe ProbeDockProbe::Config, fakefs: true do
         config.load!(&config_block)
 
         actual_scm = %i(name version dirty).inject({}){ |memo,attr| memo[attr] = scm.send(attr); memo }.reject{ |k,v| v.nil? }
-        actual_scm[:remote] = scm.remote.to_h
-        actual_scm[:remote][:url] = scm.remote[:url].to_h
+        actual_scm[:remote] = %i(name ahead behind).inject({}){ |memo,attr| memo[attr] = scm.remote.send(attr); memo }.reject{ |k,v| v.nil? }
+        actual_scm[:remote][:url] = %i(fetch push).inject({}){ |memo,attr| memo[attr] = scm.remote.url.send(attr); memo }.reject{ |k,v| v.nil? }
 
         expect(actual_scm).to eq(expected_scm_configuration)
       end

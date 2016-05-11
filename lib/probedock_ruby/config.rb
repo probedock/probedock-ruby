@@ -1,14 +1,24 @@
 require 'yaml'
+require File.join(File.dirname(__FILE__), 'configurable.rb')
 
 module ProbeDockProbe
   class Config
+    include Configurable
+
     class Error < ProbeDockProbe::Error; end
 
+    configurable({
+      publish: :boolean,
+      local_mode: :boolean,
+      print_payload: :boolean,
+      save_payload: :boolean
+    })
+
     # TODO: add silent/verbose option(s)
-    attr_writer :publish, :local_mode, :print_payload, :save_payload
     attr_reader :project, :server, :scm, :workspace, :load_warnings
 
-    def initialize
+    def initialize options = {}
+      super options
       initialize_servers
       @project = Project.new
       @scm = Scm.new
@@ -64,14 +74,14 @@ module ProbeDockProbe
 
     def apply_configuration! config
 
-      @publish = config.fetch(:publish, true)
-      @server_name = config[:server]
+      @publish = !!config.fetch(:publish, true)
       @local_mode = !!config[:local]
 
       self.workspace = config[:workspace]
       @print_payload = !!config[:payload][:print]
       @save_payload = !!config[:payload][:save]
 
+      @server_name = config[:server]
       build_servers! config
 
       project_options = config[:project]
@@ -83,7 +93,6 @@ module ProbeDockProbe
 
       @scm.update(config[:scm])
 
-      # TODO: test config block
       yield self if block_given?
     end
 

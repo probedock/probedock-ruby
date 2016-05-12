@@ -21,7 +21,7 @@
 Add it to your Gemfile:
 
 ```rb
-gem 'probedock-ruby', '~> 0.1.5'
+gem 'probedock-ruby', '~> 0.2.0'
 ```
 
 Run `bundle install`.

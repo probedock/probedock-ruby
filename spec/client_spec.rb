@@ -26,8 +26,9 @@ describe ProbeDockProbe::Client, fakefs: true do
 
   let(:server_options){ { name: 'A server', api_url: API_URL, project_api_id: '0123456789', upload: nil } }
   let(:server){ double server_options }
-  let(:client_options){ { publish: true, workspace: WORKSPACE } }
-  let(:client){ ProbeDockProbe::Client.new server, client_options }
+  let(:config_options){ { publish: true, local_mode: false, print_payload: false, save_payload: false, workspace: WORKSPACE } }
+  let(:config){ double config_options.merge(server: server) }
+  let(:client){ ProbeDockProbe::Client.new config }
   subject{ client }
 
   before :each do
@@ -37,18 +38,18 @@ describe ProbeDockProbe::Client, fakefs: true do
   describe "when created" do
     subject{ ProbeDockProbe::Client }
 
-    it "should not raise an error if the server is missing" do
-      expect{ ProbeDockProbe::Client.new nil, client_options }.not_to raise_error
-    end
-
-    it "should create an uid manager" do
-      expect(ProbeDockProbe::UID).to receive(:new).with(workspace: WORKSPACE)
-      ProbeDockProbe::Client.new server, client_options
+    it "should raise an error if the configuration is missing" do
+      expect{ ProbeDockProbe::Client.new nil }.to raise_error('A configuration is required')
     end
   end
 
   it "should upload the results payload" do
     expect(run_double).to receive(:to_h).with({})
+    expect_processed true, SENDING_PAYLOAD_MSG, API_URL, DONE_MSG
+  end
+
+  it "should create a uid manager" do
+    expect(ProbeDockProbe::UID).to receive(:new).with(workspace: WORKSPACE)
     expect_processed true, SENDING_PAYLOAD_MSG, API_URL, DONE_MSG
   end
 
@@ -58,7 +59,7 @@ describe ProbeDockProbe::Client, fakefs: true do
   end
 
   describe "in local mode" do
-    let(:client_options){ super().merge local_mode: true }
+    let(:config_options){ super().merge local_mode: true }
     it "should not upload results" do
       expect(server).not_to receive(:upload)
       expect_processed true, SENDING_PAYLOAD_MSG, API_URL, LOCAL_MODE_MSG, DONE_MSG
@@ -80,7 +81,7 @@ describe ProbeDockProbe::Client, fakefs: true do
   end
 
   describe "when publishing is disabled" do
-    let(:client_options){ super().merge publish: false }
+    let(:config_options){ super().merge publish: false }
     it "should not upload the payload" do
       expect(server).not_to receive(:upload)
       expect_processed false, PUBLISHING_DISABLED_MSG
@@ -102,7 +103,7 @@ describe ProbeDockProbe::Client, fakefs: true do
   end
 
   describe "with payload printing enabled" do
-    let(:client_options){ super().merge print_payload: true }
+    let(:config_options){ super().merge print_payload: true }
 
     it "should print the payload" do
       expect_processed true, SENDING_PAYLOAD_MSG, API_URL, DONE_MSG, PRINTING_PAYLOAD_MSG, JSON.pretty_generate(run_to_h)
@@ -115,7 +116,7 @@ describe ProbeDockProbe::Client, fakefs: true do
   end
 
   describe "with payload saving enabled" do
-    let(:client_options){ super().merge save_payload: true }
+    let(:config_options){ super().merge save_payload: true }
     let(:payload_file){ File.join WORKSPACE, 'rspec', 'servers', server_options[:name], 'payload.json' }
 
     it "should save the payload" do

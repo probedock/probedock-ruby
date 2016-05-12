@@ -32,11 +32,15 @@ describe ProbeDockProbe::Config, fakefs: true do
   end
 
   describe "default attributes" do
+    its(:publish){ should be(false) }
     its(:publish?){ should be(false) }
+    its(:local_mode){ should be(false) }
     its(:local_mode?){ should be(false) }
     its(:project){ should be_a(Project) }
     its(:scm){ should be_an(Scm) }
+    its(:print_payload){ should be(false) }
     its(:print_payload?){ should be(false) }
+    its(:save_payload){ should be(false) }
     its(:save_payload?){ should be(false) }
     its(:servers){ should be_empty }
     its(:server){ should have_server_configuration(name: 'default') }
@@ -83,7 +87,7 @@ describe ProbeDockProbe::Config, fakefs: true do
     #
     # * `expected_project_configuration`
     # * `expected_scm_configuration`
-    # * `expected_client_options`
+    # * `expected_config_options`
     # * `expected_servers`
     # * `expected_selected_server`
     shared_examples_for "a loaded configuration" do
@@ -121,7 +125,18 @@ describe ProbeDockProbe::Config, fakefs: true do
       end
 
       it "should return client options" do
-        expect(loaded_config.client_options).to eq(expected_client_options)
+
+        config_options = %i(publish local_mode print_payload save_payload).inject({}) do |memo,option|
+          memo[option] = loaded_config.send(option) && loaded_config.send("#{option}?")
+          memo
+        end
+
+        %i(workspace).each do |option|
+          value = loaded_config.send(option)
+          config_options[option] = value unless value.nil?
+        end
+
+        expect(config_options).to eq(expected_config_options)
       end
 
       it "should create the server(s)" do
@@ -158,7 +173,7 @@ describe ProbeDockProbe::Config, fakefs: true do
         }
       end
 
-      let :expected_client_options do
+      let :expected_config_options do
         {
           publish: true,
           local_mode: false,
@@ -345,7 +360,7 @@ describe ProbeDockProbe::Config, fakefs: true do
         }
       end
 
-      let :expected_client_options do
+      let :expected_config_options do
         {
           publish: true,
           local_mode: true,
@@ -439,7 +454,7 @@ describe ProbeDockProbe::Config, fakefs: true do
           }
         end
 
-        let :expected_client_options do
+        let :expected_config_options do
           {
             publish: false,
             local_mode: false,
@@ -522,7 +537,7 @@ describe ProbeDockProbe::Config, fakefs: true do
             }
           end
 
-          let :expected_client_options do
+          let :expected_config_options do
             {
               publish: true,
               local_mode: true,
@@ -609,7 +624,7 @@ describe ProbeDockProbe::Config, fakefs: true do
               }
             end
 
-            let :expected_client_options do
+            let :expected_config_options do
               {
                 publish: false,
                 local_mode: false,
@@ -710,7 +725,7 @@ describe ProbeDockProbe::Config, fakefs: true do
         }
       end
 
-      let :expected_client_options do
+      let :expected_config_options do
         {
           publish: true,
           local_mode: true,
@@ -792,7 +807,7 @@ describe ProbeDockProbe::Config, fakefs: true do
           }
         end
 
-        let :expected_client_options do
+        let :expected_config_options do
           {
             publish: false,
             local_mode: true,
@@ -880,7 +895,7 @@ describe ProbeDockProbe::Config, fakefs: true do
             }
           end
 
-          let :expected_client_options do
+          let :expected_config_options do
             {
               publish: false,
               local_mode: false,
@@ -959,7 +974,7 @@ describe ProbeDockProbe::Config, fakefs: true do
         }
       end
 
-      let :expected_client_options do
+      let :expected_config_options do
         {
           publish: false,
           local_mode: false,

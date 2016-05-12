@@ -3,22 +3,13 @@ require File.join(File.dirname(__FILE__), 'configurable.rb')
 
 module ProbeDockProbe
   class Config
-    include Configurable
-
     class Error < ProbeDockProbe::Error; end
 
-    configurable({
-      publish: :boolean,
-      local_mode: :boolean,
-      print_payload: :boolean,
-      save_payload: :boolean
-    })
-
     # TODO: add silent/verbose option(s)
+    attr_accessor :publish, :local_mode, :print_payload, :save_payload
     attr_reader :project, :server, :scm, :workspace, :load_warnings
 
-    def initialize options = {}
-      super options
+    def initialize
       initialize_servers
       @project = Project.new
       @scm = Scm.new

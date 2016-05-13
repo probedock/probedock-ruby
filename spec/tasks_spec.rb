@@ -5,15 +5,12 @@ describe ProbeDockProbe::Tasks do
   UID ||= ProbeDockProbe::UID
   Tasks ||= ProbeDockProbe::Tasks
 
-  let(:client_options){ { workspace: '/tmp' } }
-  let(:config_double){ double client_options: client_options }
-  let(:uid_options){ {} }
+  let(:uid_options){ { workspace: '/tmp' } }
   let(:uid_double){ double uid_options }
-  subject{ Tasks.new }
+  subject{ Tasks.new(workspace: uid_options[:workspace]) }
 
   before :each do
     Rake::Task.clear
-    allow(ProbeDockProbe).to receive(:config).and_return(config_double)
     allow(UID).to receive(:new).and_return(uid_double)
     subject
   end
@@ -47,11 +44,15 @@ describe ProbeDockProbe::Tasks do
   end
 
   describe "spec:probedock:uid" do
-    let(:uid_options){ super().merge generate_uid_to_env: 'abc' }
-    before(:each){ expect(UID).to receive(:new).with(client_options) }
+    before :each do
+      expect(UID).to receive(:new).with(uid_options)
+    end
 
-    it "should generate an uid in the environment" do
+    it "should generate a uid in the environment" do
+
       expect(uid_double).to receive(:generate_uid_to_env)
+      allow(uid_double).to receive(:generate_uid_to_env).and_return('abc')
+
       capture{ invoke 'spec:probedock:uid' }.tap do |c|
         expect(c.stdout).to match(/generated uid/i)
         expect(c.stdout).to match('abc')
@@ -62,11 +63,15 @@ describe ProbeDockProbe::Tasks do
   end
 
   describe "spec:probedock:uid:file" do
-    let(:uid_options){ super().merge generate_uid_to_file: 'abc' }
-    before(:each){ expect(UID).to receive(:new).with(client_options) }
+    before :each do
+      expect(UID).to receive(:new).with(uid_options)
+    end
 
-    it "should generate an uid in the uid file" do
+    it "should generate a uid in the uid file" do
+
       expect(uid_double).to receive(:generate_uid_to_file)
+      allow(uid_double).to receive(:generate_uid_to_file).and_return('abc')
+
       capture{ invoke 'spec:probedock:uid:file' }.tap do |c|
         expect(c.stdout).to match(/generated uid/i)
         expect(c.stdout).to match('abc')
@@ -77,8 +82,9 @@ describe ProbeDockProbe::Tasks do
   end
 
   describe "spec:probedock:uid:clean" do
-    let(:uid_options){ super().merge generate_uid_to_clean: nil }
-    before(:each){ expect(UID).to receive(:new).with(client_options) }
+    before :each do
+      expect(UID).to receive(:new).with(uid_options)
+    end
 
     it "should clean the uid" do
       expect(uid_double).to receive(:clean_uid)

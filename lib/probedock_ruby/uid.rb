@@ -7,8 +7,8 @@ module ProbeDockProbe
 
     class Error < ProbeDockProbe::Error; end
 
-    def initialize options = {}
-      @workspace = options[:workspace]
+    def initialize workspace: nil
+      @workspace = workspace
     end
 
     def load_uid

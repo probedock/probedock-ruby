@@ -105,9 +105,10 @@ describe ProbeDockProbe::Config, fakefs: true do
 
         config.load!(&config_block)
 
-        actual_project = %i(api_id version category tags tickets).inject({}){ |memo,attr| memo[attr] = project.send(attr); memo }.reject{ |k,v| v.nil? || (v.respond_to?(:empty?) && v.empty?) }
+        actual_project = %i(api_id version category tags tickets).inject({}){ |memo,attr| memo[attr] = project.send(attr); memo }.reject{ |k,v| v.nil? }
 
-        expect(normalize_project_config(actual_project)).to eq(normalize_project_config(expected_project_configuration))
+        expected = { tags: [], tickets: [] }.merge(normalize_project_config(expected_project_configuration))
+        expect(normalize_project_config(actual_project)).to eq(expected)
       end
 
       it "should update the scm configuration" do
@@ -977,6 +978,81 @@ describe ProbeDockProbe::Config, fakefs: true do
       let :expected_config_options do
         {
           publish: false,
+          local_mode: false,
+          print_payload: false,
+          save_payload: false
+        }
+      end
+
+      let :expected_servers do
+        [
+          {
+            name: 'a',
+            api_url: 'http://example.com/api',
+            api_token: 'secret'
+          }
+        ]
+      end
+
+      let :expected_selected_server, &->{ 'a' }
+
+      it_should_behave_like "a loaded configuration"
+    end
+
+    # The tests in this block demonstrate that null values in configuration files
+    # are supported and that some values will be coerced to the expected type.
+    describe "with badly formatted information" do
+      let :project_config do
+        <<-CONFIG
+          project:
+            apiId: abcdef
+            version: 1.2.3
+            tags: null   # null string array should be coerced to an empty array
+          servers:
+            a:
+              apiUrl: http://example.com/api
+              apiToken: secret
+          publish: null   # null publish boolean should default to true
+          server: a
+          scm:
+            name: git
+            version: 4.5.6
+            dirty: 'y'   # string should be parsed to a boolean
+            remote:
+              name: foo
+              ahead: null   # null integer should be ignored
+              behind: '2'   # string should be parsed to an integer
+              url:
+                fetch: 'git@github.com:probedock/probedock.git'
+        CONFIG
+      end
+
+      let :expected_project_configuration do
+        {
+          version: '1.2.3',
+          api_id: 'abcdef',
+          tags: []
+        }
+      end
+
+      let :expected_scm_configuration do
+        {
+          name: 'git',
+          version: '4.5.6',
+          dirty: true,
+          remote: {
+            name: 'foo',
+            behind: 2,
+            url: {
+              fetch: 'git@github.com:probedock/probedock.git'
+            }
+          }
+        }
+      end
+
+      let :expected_config_options do
+        {
+          publish: true,
           local_mode: false,
           print_payload: false,
           save_payload: false

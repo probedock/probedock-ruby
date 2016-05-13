@@ -7,7 +7,7 @@ describe ProbeDockProbe::UID, fakefs: true do
 
   let(:workspace){ '/tmp' }
   let(:uid_options){ { workspace: workspace } }
-  subject{ UID.new uid_options }
+  subject{ UID.new(**uid_options) }
 
   before :each do
     @probedock_env_vars = ENV.select{ |k,v| k.match /\APROBEDOCK_/ }.each_key{ |k| ENV.delete k }

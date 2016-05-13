@@ -29,16 +29,6 @@ module ProbeDockProbe
       define_method("#{name}?"){ instance_variable_get("@#{name}") }
     end
 
-    def client_options
-      {
-        publish: @publish,
-        local_mode: @local_mode,
-        workspace: @workspace,
-        print_payload: @print_payload,
-        save_payload: @save_payload
-      }.select{ |k,v| !v.nil? }
-    end
-
     # Clears all configuration and reloads it from configuration files and environment variables.
     def load! &block
 
@@ -178,22 +168,15 @@ module ProbeDockProbe
       config = {}
       contents = YAML.load_file(file)
 
-      # Parse boolean options.
-      %i(local publish).each do |name|
-        config[name] = parse_boolean_option(contents[name.to_s])
-      end
+      # Parse general options.
+      config.merge!(parse_general_options(contents))
 
-      # Parse string options.
-      %i(server workspace).each do |name|
-        config[name] = parse_string_option(contents[name.to_s])
-      end
-
-      # Parse option hashes.
+      # Parse configuration objects.
       %i(payload project scm).each do |name|
         config[name] = send("parse_#{name}_options", contents[name.to_s])
       end
 
-      # Parse the servers hash.
+      # Parse the server objects.
       config[:servers] = {}
       if contents['servers'].kind_of?(Hash)
         config[:servers] = contents['servers'].inject({}) do |memo,(name,options)|
@@ -405,12 +388,10 @@ module ProbeDockProbe
       return {} unless h.kind_of?(Hash)
 
       result = parse.inject({}) do |memo,(key,config)|
+
         if h.key?(key.to_s)
-          memo[key.to_s.gsub(/(.)([A-Z])/, '\1_\2').downcase.to_sym] = if %i(boolean integer string string_array).include?(config)
-            send("parse_#{config}_option", h[key.to_s])
-          else
-            raise "Unsupported option type #{config.inspect}"
-          end
+          underscored_key = key.to_s.gsub(/(.)([A-Z])/, '\1_\2').downcase.to_sym
+          memo[underscored_key] = send("parse_#{config}_option", h[key.to_s])
         end
 
         memo

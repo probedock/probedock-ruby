@@ -68,6 +68,28 @@ describe ProbeDockProbe::Configurable do
     expect(subject.corge.foo).to eq('bar')
   end
 
+  it "should automatically call a custom setter when defining a new type" do
+
+    custom_configurable_class = Class.new do
+      include Configurable
+
+      configurable({
+        foo: :custom
+      })
+
+      private
+
+      def set_custom attr, value
+        instance_variable_set("@#{attr}", value)
+      end
+    end
+
+    custom_configurable = custom_configurable_class.new
+    custom_configurable.foo = 'bar'
+
+    expect(custom_configurable.foo).to eq('bar')
+  end
+
   describe "#empty?" do
     it "should indicate whether configurable attributes are empty" do
 
@@ -186,6 +208,20 @@ describe ProbeDockProbe::Configurable do
         bar: 42,
         corge: {}
       })
+    end
+  end
+
+  it "should not allow defining configurable attributes of an invalid type" do
+    [ 'foo', true, nil, [] ].each do |invalid_type|
+      expect do
+        Class.new do
+          include Configurable
+
+          configurable({
+            foo: invalid_type
+          })
+        end
+      end.to raise_error(%/Unsupported type of configurable attribute #{invalid_type.inspect}; must be either a symbol or a configurable class/)
     end
   end
 end

@@ -1,15 +1,14 @@
 require 'securerandom'
 
 module ProbeDockProbe
-
   class UID
     ENVIRONMENT_VARIABLE = 'PROBEDOCK_TEST_REPORT_UID'
     OLD_ENVIRONMENT_VARIABLE = 'PROBE_DOCK_TEST_REPORT_UID'
 
     class Error < ProbeDockProbe::Error; end
 
-    def initialize options = {}
-      @workspace = options[:workspace]
+    def initialize workspace: nil
+      @workspace = workspace
     end
 
     def load_uid

@@ -30,7 +30,7 @@ Jeweler::RubygemsDotOrgTasks.new
 require 'rake-version'
 RakeVersion::Tasks.new do |v|
   v.copy 'README.md'
-  v.copy 'lib/probe_dock_ruby.rb'
+  v.copy 'lib/probedock_ruby.rb'
 end
 
 require 'rspec/core/rake_task'

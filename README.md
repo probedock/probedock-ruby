@@ -8,19 +8,25 @@
 [![Coverage Status](https://coveralls.io/repos/probedock/probedock-ruby/badge.svg)](https://coveralls.io/r/probedock/probedock-ruby?branch=master)
 [![License](https://img.shields.io/github/license/probedock/probedock-ruby.svg)](LICENSE.txt)
 
+
+
 ## Requirements
 
 * Ruby 2+
+
+
 
 ## Installation
 
 Add it to your Gemfile:
 
 ```rb
-gem 'probedock-ruby', '~> 0.1.5'
+gem 'probedock-ruby', '~> 0.2.0'
 ```
 
 Run `bundle install`.
+
+
 
 ## Contributing
 
@@ -30,6 +36,8 @@ Run `bundle install`.
 * Create a [pull request](http://help.github.com/pull-requests/) from your branch
 
 Please add a [changelog](CHANGELOG.md) entry with your name for new features and bug fixes.
+
+
 
 ## License
 

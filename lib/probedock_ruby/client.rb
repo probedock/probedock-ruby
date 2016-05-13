@@ -1,28 +1,24 @@
 require 'paint'
 
 module ProbeDockProbe
-
   class Client
 
-    def initialize server, options = {}
-
-      @server = server
-      @publish, @local_mode, @workspace = options[:publish], options[:local_mode], options[:workspace]
-      @print_payload, @save_payload = options[:print_payload], options[:save_payload]
-
-      @uid = UID.new workspace: @workspace
+    def initialize config
+      @config = config
+      raise "A configuration is required" unless @config
     end
 
     def process test_run
 
-      return fail "No server to publish results to" if !@server
+      return fail "No server to publish results to" if !@config.server
 
-      test_run.uid = @uid.load_uid
+      uid = UID.new workspace: @config.workspace
+      test_run.uid = uid.load_uid
 
       payload_options = {}
       return false unless payload = build_payload(test_run, payload_options)
 
-      published = if !@publish
+      published = if !@config.publish
         puts Paint["Probe Dock - Publishing disabled", :yellow]
         false
       elsif publish_payload payload
@@ -31,8 +27,8 @@ module ProbeDockProbe
         false
       end
 
-      save_payload payload if @save_payload
-      print_payload payload if @print_payload
+      save_payload payload if @config.save_payload
+      print_payload payload if @config.print_payload
 
       puts
 
@@ -66,7 +62,7 @@ module ProbeDockProbe
 
     def save_payload payload
 
-      missing = { "workspace" => @workspace, "server" => @server }.inject([]){ |memo,(k,v)| !v ? memo << k : memo }
+      missing = { "workspace" => @config.workspace, "server" => @config.server }.inject([]){ |memo,(k,v)| !v ? memo << k : memo }
       return fail "Cannot save payload without a #{missing.join ' and '}" if missing.any?
 
       FileUtils.mkdir_p File.dirname(payload_file)
@@ -74,18 +70,18 @@ module ProbeDockProbe
     end
 
     def payload_file
-      @payload_file ||= File.join(@workspace, 'rspec', 'servers', @server.name, 'payload.json')
+      @payload_file ||= File.join(@config.workspace, 'rspec', 'servers', @config.server.name, 'payload.json')
     end
 
     def publish_payload payload
 
-      puts Paint["Probe Dock - Sending payload to #{@server.api_url}...", :magenta]
+      puts Paint["Probe Dock - Sending payload to #{@config.server.api_url}...", :magenta]
 
       begin
-        if @local_mode
+        if @config.local_mode
           puts Paint['Probe Dock - LOCAL MODE: not actually sending payload.', :yellow]
         else
-          @server.upload payload
+          @config.server.upload payload
         end
         puts Paint["Probe Dock - Done!", :green]
         true

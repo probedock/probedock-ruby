@@ -2,6 +2,7 @@ require 'helper'
 
 describe ProbeDockProbe::Server do
   let(:api_token){ 'abcdefghijklmnopqrstuvwxyz' }
+
   let :options do
     {
       name: 'A server',
@@ -10,17 +11,22 @@ describe ProbeDockProbe::Server do
       project_api_id: '0000000000'
     }
   end
+
   let(:server){ ProbeDockProbe::Server.new options }
+
   subject{ server }
 
   it "should set its attributes" do
     expect(options.keys.inject({}){ |memo,k| memo[k] = subject.send(k); memo }).to eq(options)
   end
 
-  it "should have setters" do
+  it "should not have a setter for the name" do
+    expect(subject).not_to respond_to(:name=)
+  end
+
+  it "should have setters for configurable attributes" do
 
     new_options = {
-      name: 'Another server',
       api_url: 'http://example.com/api2',
       api_token: api_token.reverse,
       project_api_id: '111111111111'
@@ -33,7 +39,8 @@ describe ProbeDockProbe::Server do
   describe "#clear" do
     it "should clear the configuration" do
       server.clear
-      options.keys.each{ |k| expect(subject.send(k)).to be_nil }
+      expect(server.name).to eq(options[:name])
+      (options.keys - %i(name)).each{ |k| expect(subject.send(k)).to be_nil }
     end
   end
 

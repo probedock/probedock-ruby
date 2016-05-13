@@ -2,10 +2,11 @@ require 'fileutils'
 require 'rake/tasklib'
 
 module ProbeDockProbe
-
   class Tasks < ::Rake::TaskLib
 
-    def initialize
+    def initialize workspace:
+
+      @workspace = workspace
 
       namespace :spec do
 
@@ -56,7 +57,7 @@ module ProbeDockProbe
     end
 
     def uid_manager
-      UID.new ProbeDockProbe.config.client_options
+      UID.new workspace: @workspace
     end
   end
 end

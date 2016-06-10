@@ -6,7 +6,7 @@ source "http://rubygems.org"
 gem 'oj', '~> 2.1'
 gem 'httparty', '~> 0.13'
 gem 'paint', '~> 1.0'
-gem 'rake', '~> 11.1'
+gem 'rake', '>= 10.1', '< 12.0'
 
 # Add dependencies to develop your gem here.
 # Include everything needed to run rake, tests, features, etc.

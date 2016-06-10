@@ -5,17 +5,24 @@ describe ProbeDockProbe::Tasks do
   UID ||= ProbeDockProbe::UID
   Tasks ||= ProbeDockProbe::Tasks
 
-  let(:client_options){ { workspace: '/tmp' } }
-  let(:config_double){ double client_options: client_options }
+  let(:workspace){ '/tmp' }
   let(:uid_options){ {} }
   let(:uid_double){ double uid_options }
-  subject{ Tasks.new }
+  let(:probe_dock_env_vars){ {} }
+  subject{ Tasks.new workspace: workspace }
 
   before :each do
     Rake::Task.clear
-    allow(ProbeDockProbe).to receive(:config).and_return(config_double)
     allow(UID).to receive(:new).and_return(uid_double)
+
+    @probe_dock_env_vars = ENV.select{ |k,v| k.match /\APROBEDOCK_/ }.each_key{ |k| ENV.delete k }
+    probe_dock_env_vars.each_pair{ |k,v| ENV["PROBEDOCK_#{k.upcase}"] = v }
+
     subject
+  end
+
+  after :each do
+    @probe_dock_env_vars.each_pair{ |k,v| ENV[k] = v }
   end
 
   it "should define Probe Dock rake tasks" do
@@ -48,7 +55,7 @@ describe ProbeDockProbe::Tasks do
 
   describe "spec:probedock:uid" do
     let(:uid_options){ super().merge generate_uid_to_env: 'abc' }
-    before(:each){ expect(UID).to receive(:new).with(client_options) }
+    before(:each){ expect(UID).to receive(:new).with(workspace: workspace) }
 
     it "should generate an uid in the environment" do
       expect(uid_double).to receive(:generate_uid_to_env)
@@ -63,7 +70,7 @@ describe ProbeDockProbe::Tasks do
 
   describe "spec:probedock:uid:file" do
     let(:uid_options){ super().merge generate_uid_to_file: 'abc' }
-    before(:each){ expect(UID).to receive(:new).with(client_options) }
+    before(:each){ expect(UID).to receive(:new).with(workspace: workspace) }
 
     it "should generate an uid in the uid file" do
       expect(uid_double).to receive(:generate_uid_to_file)
@@ -78,7 +85,7 @@ describe ProbeDockProbe::Tasks do
 
   describe "spec:probedock:uid:clean" do
     let(:uid_options){ super().merge generate_uid_to_clean: nil }
-    before(:each){ expect(UID).to receive(:new).with(client_options) }
+    before(:each){ expect(UID).to receive(:new).with(workspace: workspace) }
 
     it "should clean the uid" do
       expect(uid_double).to receive(:clean_uid)
@@ -88,6 +95,20 @@ describe ProbeDockProbe::Tasks do
     end
 
     it_should_behave_like "a task", 'spec:probedock:uid:clean', :clean_uid, 'bug3'
+  end
+
+  describe "with the PROBEDOCK_WORKSPACE environment variable" do
+    let(:probe_dock_env_vars){ { workspace: '/var/tmp' } }
+    subject{ Tasks.new }
+
+    it "should set the workspace from the environment variable" do
+      expect(UID).to receive(:new).with(workspace: '/var/tmp')
+
+      expect(uid_double).to receive(:clean_uid)
+      capture{ invoke 'spec:probedock:uid:clean' }.tap do |c|
+        expect(c.stdout).to match(/cleaned/i)
+      end
+    end
   end
 
   def invoke name

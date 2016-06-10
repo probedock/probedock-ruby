@@ -5,7 +5,9 @@ module ProbeDockProbe
 
   class Tasks < ::Rake::TaskLib
 
-    def initialize
+    def initialize workspace: nil
+
+      @workspace = workspace || ENV['PROBEDOCK_WORKSPACE']
 
       namespace :spec do
 
@@ -56,7 +58,7 @@ module ProbeDockProbe
     end
 
     def uid_manager
-      UID.new ProbeDockProbe.config.client_options
+      UID.new workspace: @workspace
     end
   end
 end
